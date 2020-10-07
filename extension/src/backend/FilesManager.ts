@@ -1,24 +1,57 @@
 import * as vscode from "vscode";
-import * as fs from "fs";
+import * as ts from "typescript";
 import * as path from "path";
 import { APP_DIR, CONFIGURATION_DIR } from "../constants";
 import { join } from "path";
+import {
+  getClassNode,
+  getInjectors,
+  getObservables,
+  getWorkspaceUri,
+  transformTypescript,
+} from "./utils";
+import { ClassMetadata, ExtractedClass, Injector } from "../types";
 
 export class FilesManager {
   private hasAppDir = false;
   private hasConfigurationDir = false;
-  private metadata: {
-    [name: string]: { id: string; x: number; y: number };
+  metadata: {
+    [name: string]: ClassMetadata;
   } = {};
+  classes: {
+    [name: string]: ExtractedClass;
+  } = {};
+
+  async initialize(listeners: {
+    onClassChange: (name: string, e: ExtractedClass) => void;
+    onClassCreate: (name: string) => void;
+    onClassDelete: (name: string) => void;
+  }) {
+    await this.ensureConfigurationDir();
+    await this.ensureAppDir();
+    this.classes = await this.getClasses();
+    const fsWatcher = vscode.workspace.createFileSystemWatcher(
+      getWorkspaceUri(APP_DIR)!.path + "/**"
+    );
+    fsWatcher.onDidChange(async (uri) => {
+      const updatedClass = await this.getClass(uri);
+      this.classes[updatedClass.name] = updatedClass;
+      listeners.onClassChange(this.getClassNameFromUri(uri), updatedClass);
+    });
+    fsWatcher.onDidCreate(async (uri) =>
+      listeners.onClassCreate(this.getClassNameFromUri(uri))
+    );
+    fsWatcher.onDidDelete(async (uri) =>
+      listeners.onClassCreate(this.getClassNameFromUri(uri))
+    );
+  }
   private async ensureAppDir() {
     if (this.hasAppDir) {
       return;
     }
 
-    const dir = this.getWorkspacePath(APP_DIR)!;
-
     try {
-      await fs.promises.mkdir(dir);
+      await vscode.workspace.fs.createDirectory(getWorkspaceUri(APP_DIR)!);
       this.hasAppDir = true;
     } catch {
       // Already exists
@@ -29,89 +62,79 @@ export class FilesManager {
       return;
     }
 
-    const dir = this.getWorkspacePath(CONFIGURATION_DIR)!;
+    const dir = getWorkspaceUri(CONFIGURATION_DIR)!;
 
     try {
-      await fs.promises.mkdir(dir);
+      await vscode.workspace.fs.createDirectory(dir);
       this.hasConfigurationDir = true;
     } catch {
       // Already exists
     }
 
     try {
-      const metadata = await fs.promises.readFile(join(dir, "metadata.json"));
-      this.metadata = JSON.parse(metadata.toString("utf-8"));
+      const metadata = await vscode.workspace.fs.readFile(
+        vscode.Uri.joinPath(dir, "metadata.json")
+      );
+      this.metadata = JSON.parse(new TextDecoder("utf-8").decode(metadata));
     } catch {
       // No file, we will write it later
     }
   }
-
-  getWorkspacePath(...subdir: string[]) {
-    return (
-      vscode.workspace.workspaceFolders &&
-      path.join(vscode.workspace.workspaceFolders[0].uri.path, ...subdir)
+  private async getClass(uri: vscode.Uri): Promise<ExtractedClass> {
+    const content = await vscode.workspace.fs.readFile(uri);
+    const name = this.getClassNameFromUri(uri);
+    const node = ts.createSourceFile(
+      "temp.ts",
+      new TextDecoder("utf-8").decode(content),
+      ts.ScriptTarget.Latest
     );
-  }
-  async getMetadata() {
-    await this.ensureConfigurationDir();
+    const classNode = getClassNode(node, name);
+    const injectors = getInjectors(classNode);
+    const observables = getObservables(classNode);
 
+    return {
+      name,
+      injectors,
+      observables,
+    };
+  }
+  private getClassNameFromUri(uri: vscode.Uri) {
+    return path.basename(uri.path, ".ts");
+  }
+  getMetadata() {
     return this.metadata;
   }
-  /*
-    Read all files in the APP_DIR, except "index.ts". Each
-    file represents a class of the following structure:
-
-    // Todo.ts 
-    import { inject, injectFactory } from 'reactive-app'
-    import { IIdFactory } from './Id'
-    import { IHttp } from './Http'
-
-    export interface ITodo {}
-
-    export interface ITodoFactory {
-      (...args: ConstructorParameters<typeof Todo>): ITodo;
-    }
-
-    export class Todo implements ITodo {
-      @inject('Http')
-      private http: IHttp
-      @injectFactory('Id')
-      private createId: IIdFactory
-    }
-
-    We want to extract the following information from this file:
-    {
-      name: "Todo",
-      injects: ['Http'],
-      factories: ['Id']
-    }
-  */
-  async getClasses() {
-    this.ensureAppDir();
-    const appDir = this.getWorkspacePath(APP_DIR)!;
+  private async getClasses() {
+    const appDir = getWorkspaceUri(APP_DIR)!;
     try {
-      const files = await fs.promises.readdir(appDir);
+      const files = (await vscode.workspace.fs.readDirectory(appDir))
+        .filter(([file]) => file !== "index.ts")
+        .map(([file]) => file);
+
       const contents = await Promise.all(
-        files
-          .filter((file) => file !== "index.ts")
-          .map((file) =>
-            fs.promises.readFile(this.getWorkspacePath(APP_DIR, file)!)
-          )
+        files.map((file) =>
+          vscode.workspace.fs.readFile(vscode.Uri.joinPath(appDir, file))
+        )
       );
 
       return contents.reduce<{
-        [key: string]: { name: string };
-      }>((aggr, content) => {
-        const stringContent = content.toString();
-        const nameMatch = stringContent.match(/class (.*) implements/);
-        const name = nameMatch && nameMatch[1];
+        [key: string]: ExtractedClass;
+      }>((aggr, content, index) => {
+        const name = path.basename(files[index], ".ts");
+        const node = ts.createSourceFile(
+          "temp.ts",
+          new TextDecoder("utf-8").decode(content),
+          ts.ScriptTarget.Latest
+        );
 
-        if (!name) {
-          return aggr;
-        }
+        const classNode = getClassNode(node, name);
+        const injectors = getInjectors(classNode);
+        const observables = getObservables(classNode);
 
         aggr[name] = {
           name,
+          injectors,
+          observables,
         };
 
         return aggr;
@@ -135,34 +158,31 @@ export class FilesManager {
     x: number;
     y: number;
   }) {
-    await this.ensureConfigurationDir();
-
-    const file = this.getWorkspacePath(CONFIGURATION_DIR, "metadata.json")!;
+    const file = getWorkspaceUri(CONFIGURATION_DIR, "metadata.json")!;
 
     this.metadata[name] = {
       id,
       x,
       y,
     };
-    await fs.promises.writeFile(file, JSON.stringify(this.metadata, null, 2));
+    await vscode.workspace.fs.writeFile(
+      file,
+      new TextEncoder().encode(JSON.stringify(this.metadata, null, 2))
+    );
   }
   /*
     This method writes the initial file content
   */
   async writeClass(name: string) {
-    await this.ensureAppDir();
+    const file = getWorkspaceUri(APP_DIR, name + ".ts")!;
 
-    const file = this.getWorkspacePath(APP_DIR, name + ".ts")!;
-
-    await fs.promises.writeFile(
+    await vscode.workspace.fs.writeFile(
       file,
-      `export interface I${name}Factory {
-  (...args: ConstructorParameters<typeof ${name}>): I${name};
+      new TextEncoder().encode(`export interface I${name}Factory {
+  (...args: ConstructorParameters<typeof ${name}>): ${name};
 }
-
-export interface I${name} {}
 	  
-export class ${name} implements I${name} {}`
+export class ${name} {}`)
     );
   }
   /*
@@ -170,22 +190,133 @@ export class ${name} implements I${name} {}`
     the payload, either "singleton" or "factory"
   */
   async inject({ fromName, toName }: { fromName: string; toName: string }) {
-    await this.ensureAppDir();
+    const file = getWorkspaceUri(APP_DIR, toName + ".ts")!;
+    const code = await vscode.workspace.fs.readFile(file);
 
-    const file = this.getWorkspacePath(APP_DIR, toName + ".ts")!;
+    const newCode = transformTypescript(
+      new TextDecoder("utf-8").decode(code),
+      (node) => {
+        if (ts.isSourceFile(node)) {
+          const importDeclarationCount = node.statements.filter((statement) =>
+            ts.isImportDeclaration(statement)
+          ).length;
+          const newStatements = node.statements.slice();
 
-    await fs.promises.writeFile(
+          newStatements.splice(
+            importDeclarationCount,
+            0,
+            ts.factory.createImportDeclaration(
+              undefined,
+              undefined,
+              ts.factory.createImportClause(
+                true,
+                undefined,
+                ts.factory.createNamedImports([
+                  ts.factory.createImportSpecifier(
+                    undefined,
+                    ts.factory.createIdentifier(fromName)
+                  ),
+                ])
+              ),
+              ts.factory.createStringLiteral(`./${fromName}`)
+            )
+          );
+
+          return ts.factory.createSourceFile(
+            newStatements,
+            node.endOfFileToken,
+            node.flags
+          );
+        }
+        if (
+          ts.isClassDeclaration(node) &&
+          node.name &&
+          node.name.text === toName
+        ) {
+          return ts.factory.createClassDeclaration(
+            node.decorators,
+            node.modifiers,
+            node.name,
+            node.typeParameters,
+            node.heritageClauses,
+            ts.factory.createNodeArray([
+              ts.factory.createPropertyDeclaration(
+                [
+                  ts.factory.createDecorator(
+                    ts.factory.createCallExpression(
+                      ts.factory.createIdentifier("inject"),
+                      undefined,
+                      [ts.factory.createStringLiteral(fromName)]
+                    )
+                  ),
+                ],
+                undefined,
+                ts.factory.createIdentifier(fromName.toLowerCase()),
+                ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
+                ts.factory.createTypeReferenceNode(
+                  ts.factory.createIdentifier(fromName),
+                  undefined
+                ),
+                undefined
+              ),
+              ...node.members,
+            ])
+          );
+        }
+      }
+    );
+
+    await vscode.workspace.fs.writeFile(
       file,
-      `import { inject } from './lib';
-import { I${fromName} } from './${fromName}';
+      new TextEncoder().encode(newCode)
+    );
+  }
+  async replaceInjection(
+    name: string,
+    propertyName: string,
+    toInjection: "inject" | "injectFactory"
+  ) {
+    const file = getWorkspaceUri(APP_DIR, name + ".ts")!;
+    const code = await vscode.workspace.fs.readFile(file);
+    const newCode = transformTypescript(
+      new TextDecoder("utf-8").decode(code),
+      (node) => {
+        if (
+          ts.isPropertyDeclaration(node) &&
+          ts.isIdentifier(node.name) &&
+          node.name.text === propertyName
+        ) {
+          return ts.factory.createPropertyDeclaration(
+            [
+              ts.factory.createDecorator(
+                ts.factory.createCallExpression(
+                  ts.factory.createIdentifier(toInjection),
+                  undefined,
+                  (node.decorators![0].expression as ts.CallExpression)
+                    .arguments
+                )
+              ),
+            ],
+            node.modifiers,
+            node.name,
+            node.exclamationToken,
+            ts.factory.createTypeReferenceNode("IFactory", [
+              ts.factory.createTypeQueryNode(
+                ts.factory.createIdentifier(
+                  ((node.type as ts.TypeReferenceNode)
+                    .typeName as ts.Identifier).text
+                )
+              ),
+            ]),
+            node.initializer
+          );
+        }
+      }
+    );
 
-export interface I${toName} {}
-	  
-export class ${toName} implements I${toName} {
-  @inject private ${
-    fromName[0].toLocaleLowerCase() + fromName.slice(1)
-  }!: I${fromName}
-}`
+    await vscode.workspace.fs.writeFile(
+      file,
+      new TextEncoder().encode(newCode)
     );
   }
 }

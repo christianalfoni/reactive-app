@@ -1,5 +1,12 @@
 import * as vscode from "vscode";
-import { IncomingMessage } from "../client/backend";
+import {
+  AppMessage,
+  BackendMessage,
+  Class,
+  ClientMessage,
+  ExtractedClass,
+} from "../types";
+import { AppDevtools } from "./AppDevtools";
 import { FilesManager } from "./FilesManager";
 import { Initializer } from "./Initializer";
 
@@ -11,7 +18,8 @@ export class BackendPanel {
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
   private initializer = new Initializer();
-  private filesManager = new FilesManager();
+  private filesManager: FilesManager;
+  private appDevtools: AppDevtools;
   private _disposables: vscode.Disposable[] = [];
 
   public static createOrShow(extensionUri: vscode.Uri) {
@@ -70,50 +78,101 @@ export class BackendPanel {
 
     // Handle messages from the webview
     this._panel.webview.onDidReceiveMessage(
-      (message: IncomingMessage) => {
-        switch (message.type) {
-          case "init":
-            this.initializer.initialize(async (data) => {
-              this.sendMessage({
-                type: "init",
-                data,
-              });
-
-              if (data.status === "ready") {
-                this.sendMessage({
-                  type: "classes",
-                  data: {
-                    classes: await this.filesManager.getClasses(),
-                    metadata: await this.filesManager.getMetadata(),
-                  },
-                });
-              }
-            });
-            return;
-          case "metadata": {
-            this.filesManager.writeMetadata(message.data);
-            break;
-          }
-          case "class-new": {
-            this.filesManager.writeClass(message.data.name);
-            this.filesManager.writeMetadata(message.data);
-            break;
-          }
-          case "class-update": {
-            break;
-          }
-          case "inject": {
-            this.filesManager.inject(message.data);
-            break;
-          }
-        }
-      },
+      this.onDidReceiveMessage.bind(this),
       null,
       this._disposables
     );
+
+    this.filesManager = new FilesManager();
+    this.appDevtools = new AppDevtools();
   }
 
-  public sendMessage(message: { type: string; data: any }) {
+  private onDidReceiveMessage(message: ClientMessage) {
+    switch (message.type) {
+      case "init":
+        this.initializer.initialize(async (data) => {
+          this.sendMessage({
+            type: "init",
+            data,
+          });
+
+          if (data.status === "ready") {
+            await this.filesManager.initialize({
+              onClassChange: this.onClassChange.bind(this),
+              onClassCreate: this.onClassCreate.bind(this),
+              onClassDelete: this.onClassDelete.bind(this),
+            });
+            this.appDevtools.initialize(this.onAppMessage.bind(this));
+
+            this.sendMessage({
+              type: "classes",
+              data: Object.keys(this.filesManager.metadata).reduce<{
+                [name: string]: Class;
+              }>((aggr, name) => {
+                const clas = this.filesManager.classes[name];
+                const mdata = this.filesManager.metadata[name];
+                aggr[name] = {
+                  id: mdata.id,
+                  x: mdata.x,
+                  y: mdata.y,
+                  ...clas,
+                };
+
+                return aggr;
+              }, {}),
+            });
+          }
+        });
+        return;
+      case "class-new": {
+        this.filesManager.writeClass(message.data.name);
+        this.filesManager.writeMetadata(message.data);
+        break;
+      }
+      case "class-update": {
+        this.filesManager.writeMetadata(message.data);
+        break;
+      }
+      case "inject": {
+        this.filesManager.inject(message.data);
+        break;
+      }
+      case "inject-replace": {
+        this.filesManager.replaceInjection(
+          message.data.name,
+          message.data.injectorName,
+          message.data.injectorType
+        );
+        break;
+      }
+    }
+  }
+  private onAppMessage(message: string) {
+    const parsedMessage: AppMessage = JSON.parse(message);
+    const nodeId = this.filesManager.metadata[parsedMessage.data.class].id;
+
+    parsedMessage.data.nodeId = nodeId;
+
+    this.sendMessage({
+      type: "app",
+      data: parsedMessage,
+    });
+  }
+  private onClassChange(name: string, e: ExtractedClass) {
+    const clas = {
+      ...this.filesManager.metadata[name],
+      ...e,
+    };
+
+    this.sendMessage({
+      type: "class-update",
+      data: clas,
+    });
+  }
+  private onClassCreate(name: string) {}
+  private onClassDelete(name: string) {}
+
+  public sendMessage(message: BackendMessage) {
     this._panel.webview.postMessage(message);
   }
 
@@ -134,7 +193,7 @@ export class BackendPanel {
   private _getHtmlForWebview() {
     // And the uri we use to load this script in the webview
     //const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
-    const scriptUri = "http://localhost:1234/index.js";
+    const scriptUri = "http://localhost:5050/index.js";
 
     // Use a nonce to only allow specific scripts to be run
     const nonce = getNonce();

@@ -48,6 +48,53 @@ interface ISidebarItemProps {
   properties?: any;
 }
 
+const EditCurrentValueContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  margin: 10px;
+`;
+
+const CurrentClass = observer(({ id }: { id: string }) => {
+  const backend = useBackend();
+  const node = backend.chart.nodes[id];
+  const instance = node.properties.currentInstanceId
+    ? node.properties.instances[node.properties.currentInstanceId]
+    : null;
+  const injectors = node.properties.injectors;
+
+  return (
+    <div>
+      <h3>{node.properties.name}</h3>
+      <div>
+        {injectors.map((injector, index) => (
+          <div>
+            {injector.name}{" "}
+            <input
+              type="checkbox"
+              checked={injector.type === "injectFactory"}
+              onChange={() => {
+                backend.actions.onToggleInjectorType(node, index);
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div>
+        {instance
+          ? Object.keys(instance.values).map((valueKey) => (
+              <EditCurrentValueContainer>
+                <strong>{valueKey}</strong>
+                <textarea
+                  value={JSON.stringify(instance.values[valueKey], null, 2)}
+                ></textarea>
+              </EditCurrentValueContainer>
+            ))
+          : null}
+      </div>
+    </div>
+  );
+});
+
 const SidebarItem = ({ type, ports, properties }: ISidebarItemProps) => {
   return (
     <Outer
@@ -120,8 +167,15 @@ export const DragAndDropSidebar = observer(() => {
           properties={{
             name: "",
             isEditing: true,
+            currentInstanceId: null,
+            injectors: [],
+            observables: [],
+            instances: {},
           }}
         />
+        {backend.state.currentClass ? (
+          <CurrentClass id={backend.state.currentClass} />
+        ) : null}
       </Sidebar>
     </Page>
   );

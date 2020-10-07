@@ -1,5 +1,6 @@
 import { isEqual } from "lodash";
 import * as React from "react";
+import { toJS } from "mobx";
 import { v4 } from "uuid";
 import {
   IConfig,
@@ -64,8 +65,8 @@ export class PortWrapper extends React.Component<IPortWrapperProps> {
     // or if node.size has changed
     if (
       this.portsOfType(this.props) !== this.portsOfType(prevProps) ||
-      !isEqual(this.props.node.size, prevProps.node.size) ||
-      !isEqual(this.props.portsSize, prevProps.portsSize)
+      !isEqual(toJS(this.props.node.size), toJS(prevProps.node.size)) ||
+      !isEqual(toJS(this.props.portsSize), toJS(prevProps.portsSize))
     ) {
       this.updatePortPosition();
     }

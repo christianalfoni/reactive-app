@@ -1,3 +1,4 @@
+import { Injector, Observable } from "../../../types";
 import { IPosition, ISize } from "./generics";
 
 export type IChart<ChartProps = undefined, LinkProps = undefined> = {
@@ -39,6 +40,19 @@ export type INode = {
   properties: {
     name: string;
     isEditing: boolean;
+    currentInstanceId: string | null;
+    injectors: Injector[];
+    observables: Observable[];
+    instances: {
+      [id: string]: {
+        values: {
+          [key: string]: any;
+        };
+        injections: {
+          [key: string]: string;
+        };
+      };
+    };
   };
 };
 

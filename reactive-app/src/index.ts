@@ -86,5 +86,10 @@ export function inject(target: any, key: string): any {
 }
 
 export const createApp = <T extends IContainerConfig>(classes: T) => {
+  const ws = new WebSocket("http://localhost:5051");
+  ws.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data);
+    console.log(event.data);
+  });
   return new Container(classes);
 };

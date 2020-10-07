@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import { Backend, PackageJson } from "../types";
+import { Backend, Class, PackageJson } from "../types";
 import { FilesManager } from "./FilesManager";
+import { getWorkspaceUri } from "./utils";
 
 export class Initializer {
-  private filesManager = new FilesManager();
   private packageJsonWatcher:
     | ((curr: fs.Stats, prev: fs.Stats) => void)
     | undefined;
@@ -16,7 +16,7 @@ export class Initializer {
       if (this.hasRequiredDependencies(packageJson)) {
         cb({
           status: "ready",
-          path: this.filesManager.getWorkspacePath()!,
+          path: getWorkspaceUri()!.path,
         });
       } else {
         this.watchPackageJson(async (updatedPackageJson, unwatch) => {
@@ -27,13 +27,13 @@ export class Initializer {
             unwatch();
             cb({
               status: "ready",
-              path: this.filesManager.getWorkspacePath()!,
+              path: getWorkspaceUri()!.path,
             });
           }
         });
         cb({
           status: "missing-dependencies",
-          path: this.filesManager.getWorkspacePath()!,
+          path: getWorkspaceUri()!.path,
         });
       }
     } else {
@@ -53,28 +53,28 @@ export class Initializer {
   private watchPackageJson(
     cb: (updatedPackageJson: PackageJson | null, unwatch: () => void) => void
   ) {
-    const packageJsonPath = this.filesManager.getWorkspacePath("package.json");
+    const packageJsonUri = getWorkspaceUri("package.json");
 
-    if (!packageJsonPath) {
+    if (!packageJsonUri) {
       return;
     }
 
     if (!this.packageJsonWatcher) {
       this.packageJsonWatcher = () => {
-        cb(this.getPackageJson(), () => fs.unwatchFile(packageJsonPath));
+        cb(this.getPackageJson(), () => fs.unwatchFile(packageJsonUri.path));
       };
-      fs.watchFile(packageJsonPath, this.packageJsonWatcher);
+      fs.watchFile(packageJsonUri.path, this.packageJsonWatcher);
     }
   }
   private getPackageJson(): PackageJson | null {
-    const packageJsonPath = this.filesManager.getWorkspacePath("package.json");
+    const packageJsonUri = getWorkspaceUri("package.json");
 
-    if (!packageJsonPath) {
+    if (!packageJsonUri) {
       return null;
     }
 
-    if (fs.existsSync(packageJsonPath)) {
-      return JSON.parse(fs.readFileSync(packageJsonPath).toString());
+    if (fs.existsSync(packageJsonUri.path)) {
+      return JSON.parse(fs.readFileSync(packageJsonUri.path).toString());
     }
 
     return null;
