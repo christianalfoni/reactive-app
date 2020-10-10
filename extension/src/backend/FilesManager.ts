@@ -2,14 +2,8 @@ import * as vscode from "vscode";
 import * as ts from "typescript";
 import * as path from "path";
 import { APP_DIR, CONFIGURATION_DIR } from "../constants";
-import { join } from "path";
-import {
-  getClassNode,
-  getInjectors,
-  getObservables,
-  getWorkspaceUri,
-  transformTypescript,
-} from "./utils";
+import * as ast from "./ast-utils";
+import { getWorkspaceUri } from "./utils";
 import { ClassMetadata, ExtractedClass, Injector } from "../types";
 
 export class FilesManager {
@@ -35,14 +29,14 @@ export class FilesManager {
     );
     fsWatcher.onDidChange(async (uri) => {
       const updatedClass = await this.getClass(uri);
-      this.classes[updatedClass.name] = updatedClass;
-      listeners.onClassChange(this.getClassNameFromUri(uri), updatedClass);
+      this.classes[updatedClass.classId] = updatedClass;
+      listeners.onClassChange(this.getClassIdFromUri(uri), updatedClass);
     });
     fsWatcher.onDidCreate(async (uri) =>
-      listeners.onClassCreate(this.getClassNameFromUri(uri))
+      listeners.onClassCreate(this.getClassIdFromUri(uri))
     );
     fsWatcher.onDidDelete(async (uri) =>
-      listeners.onClassCreate(this.getClassNameFromUri(uri))
+      listeners.onClassCreate(this.getClassIdFromUri(uri))
     );
   }
   private async ensureAppDir() {
@@ -82,23 +76,24 @@ export class FilesManager {
   }
   private async getClass(uri: vscode.Uri): Promise<ExtractedClass> {
     const content = await vscode.workspace.fs.readFile(uri);
-    const name = this.getClassNameFromUri(uri);
+    const classId = this.getClassIdFromUri(uri);
     const node = ts.createSourceFile(
       "temp.ts",
       new TextDecoder("utf-8").decode(content),
       ts.ScriptTarget.Latest
     );
-    const classNode = getClassNode(node, name);
-    const injectors = getInjectors(classNode);
-    const observables = getObservables(classNode);
+
+    const classNode = ast.getClassNode(node, classId);
+    const injectors = ast.getInjectors(classNode);
+    const observables = ast.getObservables(classNode);
 
     return {
-      name,
+      classId,
       injectors,
       observables,
     };
   }
-  private getClassNameFromUri(uri: vscode.Uri) {
+  private getClassIdFromUri(uri: vscode.Uri) {
     return path.basename(uri.path, ".ts");
   }
   getMetadata() {
@@ -120,19 +115,19 @@ export class FilesManager {
       return contents.reduce<{
         [key: string]: ExtractedClass;
       }>((aggr, content, index) => {
-        const name = path.basename(files[index], ".ts");
+        const classId = path.basename(files[index], ".ts");
         const node = ts.createSourceFile(
           "temp.ts",
           new TextDecoder("utf-8").decode(content),
           ts.ScriptTarget.Latest
         );
 
-        const classNode = getClassNode(node, name);
-        const injectors = getInjectors(classNode);
-        const observables = getObservables(classNode);
+        const classNode = ast.getClassNode(node, classId);
+        const injectors = ast.getInjectors(classNode);
+        const observables = ast.getObservables(classNode);
 
-        aggr[name] = {
-          name,
+        aggr[classId] = {
+          classId,
           injectors,
           observables,
         };
@@ -148,20 +143,17 @@ export class FilesManager {
     like position and the ID of the node.
   */
   async writeMetadata({
-    name,
-    id,
+    classId,
     x,
     y,
   }: {
-    name: string;
-    id: string;
+    classId: string;
     x: number;
     y: number;
   }) {
     const file = getWorkspaceUri(CONFIGURATION_DIR, "metadata.json")!;
 
-    this.metadata[name] = {
-      id,
+    this.metadata[classId] = {
       x,
       y,
     };
@@ -173,98 +165,51 @@ export class FilesManager {
   /*
     This method writes the initial file content
   */
-  async writeClass(name: string) {
-    const file = getWorkspaceUri(APP_DIR, name + ".ts")!;
+  async writeClass(classId: string) {
+    const file = getWorkspaceUri(APP_DIR, classId + ".ts")!;
 
     await vscode.workspace.fs.writeFile(
       file,
-      new TextEncoder().encode(`export interface I${name}Factory {
-  (...args: ConstructorParameters<typeof ${name}>): ${name};
-}
-	  
-export class ${name} {}`)
+      new TextEncoder().encode(`export class ${classId} {}`)
     );
   }
   /*
     This method adds injections. The type of injection will be part of
     the payload, either "singleton" or "factory"
   */
-  async inject({ fromName, toName }: { fromName: string; toName: string }) {
-    const file = getWorkspaceUri(APP_DIR, toName + ".ts")!;
+  async inject({
+    fromClassId,
+    toClassId,
+  }: {
+    fromClassId: string;
+    toClassId: string;
+  }) {
+    const file = getWorkspaceUri(APP_DIR, toClassId + ".ts")!;
     const code = await vscode.workspace.fs.readFile(file);
 
-    const newCode = transformTypescript(
-      new TextDecoder("utf-8").decode(code),
-      (node) => {
-        if (ts.isSourceFile(node)) {
-          const importDeclarationCount = node.statements.filter((statement) =>
-            ts.isImportDeclaration(statement)
-          ).length;
-          const newStatements = node.statements.slice();
+    const newCode = ast.transformTypescript(code, (node) => {
+      if (ts.isSourceFile(node)) {
+        const withLibraryImport = ast.addImportDeclaration(node, {
+          name: "inject",
+          source: `../reactive-app`,
+          isType: false,
+        });
 
-          newStatements.splice(
-            importDeclarationCount,
-            0,
-            ts.factory.createImportDeclaration(
-              undefined,
-              undefined,
-              ts.factory.createImportClause(
-                true,
-                undefined,
-                ts.factory.createNamedImports([
-                  ts.factory.createImportSpecifier(
-                    undefined,
-                    ts.factory.createIdentifier(fromName)
-                  ),
-                ])
-              ),
-              ts.factory.createStringLiteral(`./${fromName}`)
-            )
-          );
-
-          return ts.factory.createSourceFile(
-            newStatements,
-            node.endOfFileToken,
-            node.flags
-          );
-        }
-        if (
-          ts.isClassDeclaration(node) &&
-          node.name &&
-          node.name.text === toName
-        ) {
-          return ts.factory.createClassDeclaration(
-            node.decorators,
-            node.modifiers,
-            node.name,
-            node.typeParameters,
-            node.heritageClauses,
-            ts.factory.createNodeArray([
-              ts.factory.createPropertyDeclaration(
-                [
-                  ts.factory.createDecorator(
-                    ts.factory.createCallExpression(
-                      ts.factory.createIdentifier("inject"),
-                      undefined,
-                      [ts.factory.createStringLiteral(fromName)]
-                    )
-                  ),
-                ],
-                undefined,
-                ts.factory.createIdentifier(fromName.toLowerCase()),
-                ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
-                ts.factory.createTypeReferenceNode(
-                  ts.factory.createIdentifier(fromName),
-                  undefined
-                ),
-                undefined
-              ),
-              ...node.members,
-            ])
-          );
-        }
+        return ast.addImportDeclaration(withLibraryImport, {
+          name: fromClassId,
+          source: `./${fromClassId}`,
+          isType: true,
+        });
       }
-    );
+      if (ast.isClassNode(node, toClassId)) {
+        return ast.addInjectionProperty(
+          node,
+          fromClassId,
+          fromClassId.toLowerCase(),
+          "inject"
+        );
+      }
+    });
 
     await vscode.workspace.fs.writeFile(
       file,
@@ -273,46 +218,46 @@ export class ${name} {}`)
   }
   async replaceInjection(
     name: string,
+    fromName: string,
     propertyName: string,
     toInjection: "inject" | "injectFactory"
   ) {
     const file = getWorkspaceUri(APP_DIR, name + ".ts")!;
     const code = await vscode.workspace.fs.readFile(file);
-    const newCode = transformTypescript(
-      new TextDecoder("utf-8").decode(code),
-      (node) => {
-        if (
-          ts.isPropertyDeclaration(node) &&
-          ts.isIdentifier(node.name) &&
-          node.name.text === propertyName
-        ) {
-          return ts.factory.createPropertyDeclaration(
-            [
-              ts.factory.createDecorator(
-                ts.factory.createCallExpression(
-                  ts.factory.createIdentifier(toInjection),
-                  undefined,
-                  (node.decorators![0].expression as ts.CallExpression)
-                    .arguments
-                )
-              ),
-            ],
-            node.modifiers,
-            node.name,
-            node.exclamationToken,
-            ts.factory.createTypeReferenceNode("IFactory", [
-              ts.factory.createTypeQueryNode(
-                ts.factory.createIdentifier(
-                  ((node.type as ts.TypeReferenceNode)
-                    .typeName as ts.Identifier).text
-                )
-              ),
-            ]),
-            node.initializer
-          );
+    const newCode = ast.transformTypescript(code, (node) => {
+      if (ts.isSourceFile(node)) {
+        const withClassImport = ast.addImportDeclaration(node, {
+          name: fromName,
+          source: `./${fromName}`,
+          isType: true,
+        });
+
+        const withInjection = ast.addImportDeclaration(withClassImport, {
+          name: toInjection,
+          source: "../reactive-app",
+          isType: false,
+        });
+
+        if (toInjection === "injectFactory") {
+          return ast.addImportDeclaration(withInjection, {
+            name: "IFactory",
+            source: "../reactive-app",
+            isType: false,
+          });
         }
+
+        return withInjection;
       }
-    );
+
+      if (ast.isClassNode(node, name)) {
+        return ast.addInjectionProperty(
+          node,
+          fromName,
+          propertyName,
+          toInjection
+        );
+      }
+    });
 
     await vscode.workspace.fs.writeFile(
       file,

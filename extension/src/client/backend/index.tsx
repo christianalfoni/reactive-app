@@ -1,7 +1,6 @@
 import { observable } from "mobx";
 import * as React from "react";
-import { DebugAdapterNamedPipeServer } from "vscode";
-import { Backend, Injector, BackendMessage, ClientMessage } from "../../types";
+import { Backend, BackendMessage, ClientMessage } from "../../types";
 import { IChart, INode } from "../flow-chart";
 import * as actions from "../flow-chart/container/actions";
 
@@ -11,12 +10,9 @@ const vscode = acquireVsCodeApi();
 export type ClientBackend = {
   chart: IChart;
   chartActions: typeof actions;
-  state: {
-    currentClass: string | null;
-  };
   actions: {
-    onNameChange(node: INode, newName: string): void;
-    onShowClass(node: INode): void;
+    onInstanceClick(classId: string, instanceId: number): void;
+    onNameSubmit(node: INode, newName: string): void;
     onToggleInjectorType(node: INode, index: number): void;
   };
   send: (message: any) => void;
@@ -41,8 +37,7 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
     send({
       type: "class-update",
       data: {
-        name: chart.nodes[data.id].properties.name,
-        id: data.id,
+        classId: data.id,
         x: data.data.lastX,
         y: data.data.lastY,
       },
@@ -56,8 +51,8 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
     send({
       type: "inject",
       data: {
-        fromName: chart.nodes[fromId].properties.name,
-        toName: chart.nodes[toId].properties.name,
+        fromClassId: fromId,
+        toClassId: toId,
       },
     });
   }) as typeof actions.onLinkComplete,
@@ -66,9 +61,6 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
 const backend = observable<ClientBackend>({
   status: "pending",
   chart,
-  state: observable({
-    currentClass: null,
-  }),
   chartActions: Object.keys(actions).reduce<any>((aggr, key) => {
     aggr[key] = (...args: any[]) => {
       (actions as any)[key](...args)(chart);
@@ -82,36 +74,22 @@ const backend = observable<ClientBackend>({
   }, {}),
   send,
   actions: {
-    onNameChange(node, newName) {
-      const isNewClass = !node.properties.name;
-
+    onNameSubmit(node, newName) {
+      delete chart.nodes[node.id];
+      node.id = newName;
       node.properties.name = newName;
       node.properties.isEditing = false;
 
-      send(
-        isNewClass
-          ? {
-              type: "class-new",
-              data: {
-                id: node.id,
-                name: newName,
-                x: node.position.x,
-                y: node.position.y,
-              },
-            }
-          : {
-              type: "class-update",
-              data: {
-                id: node.id,
-                name: newName,
-                x: node.position.x,
-                y: node.position.y,
-              },
-            }
-      );
-    },
-    onShowClass(node) {
-      backend.state.currentClass = node.id;
+      chart.nodes[newName] = node;
+
+      send({
+        type: "class-new",
+        data: {
+          classId: node.id,
+          x: node.position.x,
+          y: node.position.y,
+        },
+      });
     },
     onToggleInjectorType(node, index) {
       const injector = node.properties.injectors[index];
@@ -119,11 +97,19 @@ const backend = observable<ClientBackend>({
       send({
         type: "inject-replace",
         data: {
-          name: node.properties.name,
-          injectorName: injector.name,
+          classId: node.id,
+          injectClassId: injector.classId,
+          propertyName: injector.propertyName,
           injectorType: injector.type === "inject" ? "injectFactory" : "inject",
         },
       });
+    },
+    onInstanceClick(classId: string, instanceId: number) {
+      chart.nodes[classId].properties.currentInstanceId = instanceId;
+      chart.selected = {
+        type: "node",
+        id: classId,
+      };
     },
   },
 });
@@ -137,37 +123,34 @@ window.addEventListener("message", (event) => {
     }
     case "class-update": {
       message.data.injectors.forEach((injector) => {
-        const id = `${injector.class}_${injector.name}`;
+        const id = `${injector.classId}_${injector.propertyName}`;
         if (!chart.links[id]) {
           chart.links[id] = {
             id,
             from: {
               portId: "output",
-              nodeId: Object.keys(chart.nodes).find(
-                (nodeId) =>
-                  chart.nodes[nodeId].properties.name === message.data.name
-              )!,
+              nodeId: injector.classId,
             },
             to: {
               portId: "input",
-              nodeId: message.data.id,
+              nodeId: message.data.classId,
             },
           };
         }
       });
-      chart.nodes[message.data.id].position.x = message.data.x;
-      chart.nodes[message.data.id].position.y = message.data.y;
-      chart.nodes[message.data.id].properties.injectors =
+      chart.nodes[message.data.classId].position.x = message.data.x;
+      chart.nodes[message.data.classId].position.y = message.data.y;
+      chart.nodes[message.data.classId].properties.injectors =
         message.data.injectors;
-      chart.nodes[message.data.id].properties.observables =
+      chart.nodes[message.data.classId].properties.observables =
         message.data.observables;
       break;
     }
     case "classes": {
       chart.nodes = Object.keys(message.data).reduce<any>((aggr, key) => {
-        const { id, x, y, injectors, observables } = message.data[key];
-        aggr[id] = observable({
-          id,
+        const { classId, x, y, injectors, observables } = message.data[key];
+        aggr[classId] = observable({
+          id: classId,
           type: "Class",
           ports: {
             input: {
@@ -199,20 +182,20 @@ window.addEventListener("message", (event) => {
       }, {});
       chart.links = observable(
         Object.keys(message.data).reduce<any>((aggr, key) => {
-          const { id } = message.data[key];
+          const { classId } = message.data[key];
 
           Object.assign(
             aggr,
             message.data[key].injectors.reduce<any>((aggr, injector) => {
-              const linkId = `${injector.class}_${injector.name}`;
+              const linkId = `${injector.classId}_${injector.propertyName}`;
               aggr[linkId] = {
                 id: linkId,
                 from: {
-                  nodeId: message.data[injector.class].id,
+                  nodeId: injector.classId,
                   portId: "output",
                 },
                 to: {
-                  nodeId: id,
+                  nodeId: classId,
                   portId: "input",
                 },
               };
@@ -228,40 +211,69 @@ window.addEventListener("message", (event) => {
     }
     case "app": {
       const appMessage = message.data;
+
       switch (appMessage.type) {
         case "instance": {
           const instances =
-            chart.nodes[appMessage.data.nodeId].properties.instances;
+            chart.nodes[appMessage.data.classId].properties.instances;
 
-          if (!instances[appMessage.data.id]) {
-            instances[appMessage.data.id] = observable({
-              values: {},
-              injections: {},
+          if (!instances[appMessage.data.instanceId]) {
+            instances[appMessage.data.instanceId] = observable({
+              values: observable({}),
+              injections: observable({}),
             });
           }
 
           break;
         }
+        case "injection": {
+          const data = appMessage.data;
+          const instances = chart.nodes[data.classId].properties.instances;
+
+          if (!instances[appMessage.data.instanceId]) {
+            instances[appMessage.data.instanceId] = observable({
+              values: observable({}),
+              injections: observable({}),
+            });
+          }
+
+          const instance =
+            chart.nodes[data.classId].properties.instances[data.instanceId];
+
+          if (!instance.injections[data.propertyName]) {
+            instance.injections[data.propertyName] = observable([]);
+          }
+
+          instance.injections[data.propertyName].push(data.injectInstanceId);
+
+          console.log("ADDED INJECTION!");
+
+          break;
+        }
         case "update": {
-          console.log("UPDATE", JSON.stringify(appMessage.data, null, 2));
           const instances =
-            chart.nodes[appMessage.data.nodeId].properties.instances;
+            chart.nodes[appMessage.data.classId].properties.instances;
           const targetKey = appMessage.data.path.pop()!;
 
-          if (instances[appMessage.data.id]) {
+          if (instances[appMessage.data.instanceId]) {
             const targetBase = appMessage.data.path.reduce(
               (aggr, key) => aggr[key],
-              instances[appMessage.data.id].values
+              instances[appMessage.data.instanceId].values
             );
 
             targetBase[targetKey] = appMessage.data.value;
           } else {
-            instances[appMessage.data.id] = observable({
-              values: {
+            instances[appMessage.data.instanceId] = observable({
+              values: observable({
                 [targetKey]: appMessage.data.value,
-              },
-              injections: {},
+              }),
+              injections: observable({}),
             });
+          }
+
+          if (Object.keys(instances).length === 1) {
+            chart.nodes[appMessage.data.classId].properties.currentInstanceId =
+              appMessage.data.instanceId;
           }
 
           break;

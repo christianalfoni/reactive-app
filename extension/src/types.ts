@@ -19,8 +19,8 @@ export type PackageJson = {
 };
 
 export type Injector = {
-  class: string;
-  name: string;
+  classId: string;
+  propertyName: string;
   type: "inject" | "injectFactory";
 };
 
@@ -29,13 +29,13 @@ export type Observable = {
 };
 
 export type ExtractedClass = {
-  name: string;
+  classId: string;
   injectors: Injector[];
   observables: Observable[];
 };
 
 export type Class = {
-  id: string;
+  classId: string;
   x: number;
   y: number;
 } & ExtractedClass;
@@ -47,8 +47,7 @@ export type ClientMessage =
   | {
       type: "class-new";
       data: {
-        id: string;
-        name: string;
+        classId: string;
         x: number;
         y: number;
       };
@@ -56,8 +55,7 @@ export type ClientMessage =
   | {
       type: "class-update";
       data: {
-        id: string;
-        name: string;
+        classId: string;
         x: number;
         y: number;
       };
@@ -65,20 +63,21 @@ export type ClientMessage =
   | {
       type: "inject";
       data: {
-        fromName: string;
-        toName: string;
+        fromClassId: string;
+        toClassId: string;
       };
     }
   | {
       type: "inject-replace";
       data: {
-        name: string;
-        injectorName: string;
+        classId: string;
+        injectClassId: string;
+        propertyName: string;
         injectorType: "inject" | "injectFactory";
       };
     };
 
-export type ClassMetadata = { id: string; x: number; y: number };
+export type ClassMetadata = { x: number; y: number };
 
 export type BackendMessage =
   | {
@@ -108,17 +107,25 @@ export type AppMessage =
   | {
       type: "instance";
       data: {
-        nodeId: string;
-        class: string;
-        id: number;
+        classId: string;
+        instanceId: number;
+      };
+    }
+  | {
+      type: "injection";
+      data: {
+        propertyName: string;
+        injectClassId: string;
+        injectInstanceId: number;
+        classId: string;
+        instanceId: number;
       };
     }
   | {
       type: "update";
       data: {
-        nodeId: string;
-        class: string;
-        id: number;
+        classId: string;
+        instanceId: number;
         path: string[];
         value: any;
       };
@@ -126,9 +133,8 @@ export type AppMessage =
   | {
       type: "splice";
       data: {
-        nodeId: string;
-        class: string;
-        id: number;
+        classId: string;
+        instanceId: number;
         path: string[];
         index: number;
         deleteCount: number;

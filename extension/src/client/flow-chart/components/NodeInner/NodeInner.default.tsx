@@ -84,7 +84,7 @@ export const NodeInnerDefault = observer(
             <form
               onSubmit={(event) => {
                 event.preventDefault();
-                backend.actions.onNameChange(node, name);
+                backend.actions.onNameSubmit(node, name);
               }}
             >
               <input
@@ -98,21 +98,16 @@ export const NodeInnerDefault = observer(
           ) : (
             <Header>
               <h3>{node.properties.name}</h3>
-              <EditValue
-                onClick={() => {
-                  backend.actions.onShowClass(node);
-                }}
-              />
             </Header>
           )}
         </div>
         <div>
-          {node.properties.injectors.map((injector, index) => {
+          {node.properties.injectors.map((injector) => {
             return (
-              <Property key={injector.name}>
+              <Property key={injector.propertyName}>
                 <HiLink />{" "}
                 <span>
-                  <strong>{injector.class}</strong> {injector.name}
+                  <strong>{injector.classId}</strong> {injector.propertyName}
                 </span>
               </Property>
             );
@@ -123,7 +118,8 @@ export const NodeInnerDefault = observer(
                 <HiOutlineEye />{" "}
                 <span>
                   {observable.name}{" "}
-                  {instanceId
+                  {instanceId &&
+                  node.properties.instances[instanceId].values[observable.name]
                     ? renderValue(
                         node.properties.instances[instanceId].values[
                           observable.name

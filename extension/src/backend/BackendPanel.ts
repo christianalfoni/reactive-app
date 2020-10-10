@@ -108,11 +108,10 @@ export class BackendPanel {
               type: "classes",
               data: Object.keys(this.filesManager.metadata).reduce<{
                 [name: string]: Class;
-              }>((aggr, name) => {
-                const clas = this.filesManager.classes[name];
-                const mdata = this.filesManager.metadata[name];
-                aggr[name] = {
-                  id: mdata.id,
+              }>((aggr, classId) => {
+                const clas = this.filesManager.classes[classId];
+                const mdata = this.filesManager.metadata[classId];
+                aggr[classId] = {
                   x: mdata.x,
                   y: mdata.y,
                   ...clas,
@@ -125,7 +124,7 @@ export class BackendPanel {
         });
         return;
       case "class-new": {
-        this.filesManager.writeClass(message.data.name);
+        this.filesManager.writeClass(message.data.classId);
         this.filesManager.writeMetadata(message.data);
         break;
       }
@@ -139,8 +138,9 @@ export class BackendPanel {
       }
       case "inject-replace": {
         this.filesManager.replaceInjection(
-          message.data.name,
-          message.data.injectorName,
+          message.data.classId,
+          message.data.injectClassId,
+          message.data.propertyName,
           message.data.injectorType
         );
         break;
@@ -149,9 +149,6 @@ export class BackendPanel {
   }
   private onAppMessage(message: string) {
     const parsedMessage: AppMessage = JSON.parse(message);
-    const nodeId = this.filesManager.metadata[parsedMessage.data.class].id;
-
-    parsedMessage.data.nodeId = nodeId;
 
     this.sendMessage({
       type: "app",

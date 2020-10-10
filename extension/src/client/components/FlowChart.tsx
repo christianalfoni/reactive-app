@@ -10,6 +10,7 @@ import {
   INode,
   FlowChart,
 } from "../flow-chart";
+import ValueInspector from "./ValueInspector";
 
 const GlobalStyle = createGlobalStyle`
   body {
@@ -50,7 +51,6 @@ interface ISidebarItemProps {
 
 const EditCurrentValueContainer = styled.div`
   display: flex;
-  flex-direction: column;
   margin: 10px;
 `;
 
@@ -68,14 +68,30 @@ const CurrentClass = observer(({ id }: { id: string }) => {
       <div>
         {injectors.map((injector, index) => (
           <div>
-            {injector.name}{" "}
-            <input
-              type="checkbox"
-              checked={injector.type === "injectFactory"}
-              onChange={() => {
-                backend.actions.onToggleInjectorType(node, index);
-              }}
-            />
+            <div>
+              {injector.classId}{" "}
+              <input
+                type="checkbox"
+                checked={injector.type === "injectFactory"}
+                onChange={() => {
+                  backend.actions.onToggleInjectorType(node, index);
+                }}
+              />
+            </div>
+            <div>
+              {instance && instance.injections[injector.propertyName]
+                ? instance.injections[injector.propertyName].map((id) => (
+                    <div
+                      key={id}
+                      onClick={() => {
+                        backend.actions.onInstanceClick(injector.classId, id);
+                      }}
+                    >
+                      Instance {id}
+                    </div>
+                  ))
+                : null}
+            </div>
           </div>
         ))}
       </div>
@@ -84,9 +100,11 @@ const CurrentClass = observer(({ id }: { id: string }) => {
           ? Object.keys(instance.values).map((valueKey) => (
               <EditCurrentValueContainer>
                 <strong>{valueKey}</strong>
-                <textarea
-                  value={JSON.stringify(instance.values[valueKey], null, 2)}
-                ></textarea>
+                <ValueInspector
+                  small
+                  value={instance.values[valueKey]}
+                  delimiter="."
+                />
               </EditCurrentValueContainer>
             ))
           : null}
@@ -173,8 +191,9 @@ export const DragAndDropSidebar = observer(() => {
             instances: {},
           }}
         />
-        {backend.state.currentClass ? (
-          <CurrentClass id={backend.state.currentClass} />
+
+        {backend.chart.selected && backend.chart.selected.id ? (
+          <CurrentClass id={backend.chart.selected.id!} />
         ) : null}
       </Sidebar>
     </Page>

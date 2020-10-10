@@ -40,7 +40,7 @@ export type INode = {
   properties: {
     name: string;
     isEditing: boolean;
-    currentInstanceId: string | null;
+    currentInstanceId: number | null;
     injectors: Injector[];
     observables: Observable[];
     instances: {
@@ -49,7 +49,7 @@ export type INode = {
           [key: string]: any;
         };
         injections: {
-          [key: string]: string;
+          [propertyName: string]: number[];
         };
       };
     };
