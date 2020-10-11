@@ -1,14 +1,12 @@
 import * as vscode from "vscode";
 import * as ts from "typescript";
 import * as path from "path";
-import { APP_DIR, CONFIGURATION_DIR } from "../constants";
+import { APP_DIR, CONFIGURATION_DIR, LIBRARY_IMPORT } from "../constants";
 import * as ast from "./ast-utils";
 import { getWorkspaceUri } from "./utils";
-import { ClassMetadata, ExtractedClass, Injector } from "../types";
+import { ClassMetadata, ExtractedClass } from "../types";
 
 export class FilesManager {
-  private hasAppDir = false;
-  private hasConfigurationDir = false;
   metadata: {
     [name: string]: ClassMetadata;
   } = {};
@@ -23,6 +21,7 @@ export class FilesManager {
   }) {
     await this.ensureConfigurationDir();
     await this.ensureAppDir();
+    await this.ensureContainerEntry();
     this.classes = await this.getClasses();
     const fsWatcher = vscode.workspace.createFileSystemWatcher(
       getWorkspaceUri(APP_DIR)!.path + "/**"
@@ -40,27 +39,17 @@ export class FilesManager {
     );
   }
   private async ensureAppDir() {
-    if (this.hasAppDir) {
-      return;
-    }
-
     try {
       await vscode.workspace.fs.createDirectory(getWorkspaceUri(APP_DIR)!);
-      this.hasAppDir = true;
     } catch {
       // Already exists
     }
   }
   private async ensureConfigurationDir() {
-    if (this.hasConfigurationDir) {
-      return;
-    }
-
     const dir = getWorkspaceUri(CONFIGURATION_DIR)!;
 
     try {
       await vscode.workspace.fs.createDirectory(dir);
-      this.hasConfigurationDir = true;
     } catch {
       // Already exists
     }
@@ -72,6 +61,23 @@ export class FilesManager {
       this.metadata = JSON.parse(new TextDecoder("utf-8").decode(metadata));
     } catch {
       // No file, we will write it later
+    }
+  }
+  private async ensureContainerEntry() {
+    const entryFile = vscode.Uri.joinPath(
+      getWorkspaceUri(APP_DIR)!,
+      "index.ts"
+    );
+    try {
+      await vscode.workspace.fs.stat(entryFile);
+    } catch {
+      // We do not have the file, lets write it
+      await vscode.workspace.fs.writeFile(
+        entryFile,
+        new TextEncoder().encode(`import { createApp } from '${LIBRARY_IMPORT}'
+export const app = createApp({})
+`)
+      );
     }
   }
   private async getClass(uri: vscode.Uri): Promise<ExtractedClass> {
@@ -172,6 +178,36 @@ export class FilesManager {
       file,
       new TextEncoder().encode(`export class ${classId} {}`)
     );
+
+    await this.writeClassToEntryFile(classId);
+  }
+  private async writeClassToEntryFile(classId: string) {
+    const file = getWorkspaceUri(APP_DIR, "index.ts")!;
+    const code = await vscode.workspace.fs.readFile(file);
+
+    const newCode = ast.transformTypescript(code, (node) => {
+      if (ts.isSourceFile(node)) {
+        return ast.addImportDeclaration(node, {
+          name: classId,
+          source: `./${classId}`,
+          isType: false,
+        });
+      }
+      if (ts.isObjectLiteralExpression(node)) {
+        return ts.factory.createObjectLiteralExpression(
+          [
+            ...node.properties,
+            ts.factory.createShorthandPropertyAssignment(classId, undefined),
+          ],
+          undefined
+        );
+      }
+    });
+
+    await vscode.workspace.fs.writeFile(
+      file,
+      new TextEncoder().encode(newCode)
+    );
   }
   /*
     This method adds injections. The type of injection will be part of
@@ -191,7 +227,7 @@ export class FilesManager {
       if (ts.isSourceFile(node)) {
         const withLibraryImport = ast.addImportDeclaration(node, {
           name: "inject",
-          source: `../reactive-app`,
+          source: LIBRARY_IMPORT,
           isType: false,
         });
 
@@ -234,14 +270,14 @@ export class FilesManager {
 
         const withInjection = ast.addImportDeclaration(withClassImport, {
           name: toInjection,
-          source: "../reactive-app",
+          source: LIBRARY_IMPORT,
           isType: false,
         });
 
         if (toInjection === "injectFactory") {
           return ast.addImportDeclaration(withInjection, {
             name: "IFactory",
-            source: "../reactive-app",
+            source: LIBRARY_IMPORT,
             isType: false,
           });
         }

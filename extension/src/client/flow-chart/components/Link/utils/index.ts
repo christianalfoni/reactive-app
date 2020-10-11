@@ -1,2 +1,2 @@
-export * from './getLinkPosition'
-export * from './generateCurvePath'
+export * from "./getLinkPosition";
+export * from "./generateCurvePath";

@@ -1,2 +1,2 @@
-export * from './RegularLink'
-export * from './ArrowLink'
+export * from "./RegularLink";
+export * from "./ArrowLink";

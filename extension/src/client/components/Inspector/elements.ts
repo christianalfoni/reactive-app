@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { colors } from "../../../design-tokens";
 
 export const Wrapper = styled.div({
   fontFamily: "'Source Code Pro', monospace",
@@ -37,24 +38,24 @@ export const Bracket = styled.div<{ pointer: boolean }>((props) => ({
 export const StringValue = styled.div({
   display: "flex",
   alignItems: "center",
-  color: "var(--terminal.ansiYellow)",
+  color: colors.terminal.ansiYellow,
 });
 
 export const OtherValue = styled.div({
   display: "flex",
   alignItems: "center",
-  color: "var(--terminal.ansiMagenta)",
+  color: colors.terminal.ansiMagenta,
 });
 
 export const InlineClass = styled.span({
-  color: "var(--terminal.ansiMagenta)",
+  color: colors.terminal.ansiMagenta,
   marginRight: "0.5rem",
 });
 
 export const GenericValue = styled.div({
   display: "flex",
   alignItems: "center",
-  color: "var(--terminal.ansiBlue)",
+  color: colors.terminal.ansiBlue,
 });
 
 export const NestedChildren = styled.div({

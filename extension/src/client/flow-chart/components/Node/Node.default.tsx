@@ -1,5 +1,6 @@
 import styled, { css } from "styled-components";
 import { IConfig, INode } from "../..";
+import { colors } from "../../../../design-tokens";
 
 export interface INodeDefaultProps {
   className?: string;
@@ -17,14 +18,15 @@ export interface INodeDefaultProps {
 
 export const NodeDefault = styled.div<INodeDefaultProps>`
   position: absolute;
-  background: white;
+  background: ${colors.activityBar.background};
   border-radius: 4px;
-  color: black;
+  color: ${colors.activityBar.foreground};
+  border: 1px solid ${colors.activityBar.border};
   min-width: 200px;
   border: 1px solid transparent;
   ${(props) =>
     props.isSelected &&
     css`
-      border: 1px solid red;
+      border: 1px solid ${colors.activityBar.activeBorder};
     `}
 ` as any;

@@ -1,3 +1,3 @@
-export const noop = () => null
+export const noop = () => null;
 
-export const identity = <T extends any>(val: T) => val
+export const identity = <T extends any>(val: T) => val;

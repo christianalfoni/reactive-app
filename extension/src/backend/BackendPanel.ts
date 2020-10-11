@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { APP_DIR } from "../constants";
 import {
   AppMessage,
   BackendMessage,
@@ -9,6 +10,7 @@ import {
 import { AppDevtools } from "./AppDevtools";
 import { FilesManager } from "./FilesManager";
 import { Initializer } from "./Initializer";
+import { getWorkspaceUri } from "./utils";
 
 export class BackendPanel {
   public static currentPanel: BackendPanel | undefined;
@@ -143,6 +145,14 @@ export class BackendPanel {
           message.data.propertyName,
           message.data.injectorType
         );
+        break;
+      }
+      case "class-open": {
+        const file = getWorkspaceUri(APP_DIR, message.data.classId + ".ts")!;
+        const openPath = vscode.Uri.parse(file.fsPath);
+        vscode.workspace.openTextDocument(openPath).then((doc) => {
+          vscode.window.showTextDocument(doc);
+        });
         break;
       }
     }

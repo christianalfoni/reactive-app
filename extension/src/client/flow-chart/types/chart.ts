@@ -1,4 +1,4 @@
-import { Injector, Observable } from "../../../types";
+import { ClassNodeProperties, Injector, Observable } from "../../../types";
 import { IPosition, ISize } from "./generics";
 
 export type IChart<ChartProps = undefined, LinkProps = undefined> = {
@@ -37,23 +37,7 @@ export type INode = {
   };
   /** System Temp */
   size?: ISize;
-  properties: {
-    name: string;
-    isEditing: boolean;
-    currentInstanceId: number | null;
-    injectors: Injector[];
-    observables: Observable[];
-    instances: {
-      [id: string]: {
-        values: {
-          [key: string]: any;
-        };
-        injections: {
-          [propertyName: string]: number[];
-        };
-      };
-    };
-  };
+  properties: ClassNodeProperties;
 };
 
 export type IPort<PortProps = undefined> = {

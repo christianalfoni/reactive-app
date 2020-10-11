@@ -1,6 +1,7 @@
 import * as React from "react";
 import styled from "styled-components";
 import { IConfig, IPort } from "../..";
+import { colors } from "../../../../design-tokens";
 
 export interface IPortDefaultProps {
   className?: string;
@@ -16,13 +17,13 @@ const PortDefaultOuter = styled.div`
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: white;
+  background: ${colors.activityBar.background};
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
   &:hover > div {
-    background: cornflowerblue;
+    background: ${colors.button.hoverBackground};
   }
 `;
 
@@ -30,7 +31,8 @@ const PortDefaultInner = styled.div<{ active: boolean }>`
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: ${(props) => (props.active ? "cornflowerblue" : "grey")};
+  background: ${(props) =>
+    props.active ? colors.activityBar.activeBorder : colors.button.background};
   cursor: pointer;
 `;
 

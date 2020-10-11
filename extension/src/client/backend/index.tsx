@@ -1,6 +1,7 @@
 import { observable } from "mobx";
 import * as React from "react";
-import { Backend, BackendMessage, ClientMessage } from "../../types";
+import { colors, getVariableValue } from "../../design-tokens";
+import { Backend, BackendMessage, ClientMessage, Injector } from "../../types";
 import { IChart, INode } from "../flow-chart";
 import * as actions from "../flow-chart/container/actions";
 
@@ -13,7 +14,8 @@ export type ClientBackend = {
   actions: {
     onInstanceClick(classId: string, instanceId: number): void;
     onNameSubmit(node: INode, newName: string): void;
-    onToggleInjectorType(node: INode, index: number): void;
+    onToggleInjectorType(node: INode, injector: Injector): void;
+    onOpenClass(classId: string): void;
   };
   send: (message: any) => void;
 } & Backend;
@@ -91,9 +93,7 @@ const backend = observable<ClientBackend>({
         },
       });
     },
-    onToggleInjectorType(node, index) {
-      const injector = node.properties.injectors[index];
-
+    onToggleInjectorType(node, injector) {
       send({
         type: "inject-replace",
         data: {
@@ -110,6 +110,14 @@ const backend = observable<ClientBackend>({
         type: "node",
         id: classId,
       };
+    },
+    onOpenClass(classId: string) {
+      send({
+        type: "class-open",
+        data: {
+          classId,
+        },
+      });
     },
   },
 });
@@ -156,12 +164,16 @@ window.addEventListener("message", (event) => {
             input: {
               id: "input",
               type: "top",
-              properties: {},
+              properties: {
+                linkColor: getVariableValue("activityBar-activeBorder"),
+              },
             },
             output: {
               id: "output",
               type: "bottom",
-              properties: {},
+              properties: {
+                linkColor: getVariableValue("activityBar-activeBorder"),
+              },
             },
           },
           position: {

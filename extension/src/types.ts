@@ -40,6 +40,26 @@ export type Class = {
   y: number;
 } & ExtractedClass;
 
+export type ClassInstance = {
+  values: {
+    [key: string]: any;
+  };
+  injections: {
+    [propertyName: string]: number[];
+  };
+};
+
+export type ClassNodeProperties = {
+  name: string;
+  isEditing: boolean;
+  currentInstanceId: number | null;
+  injectors: Injector[];
+  observables: Observable[];
+  instances: {
+    [id: string]: ClassInstance;
+  };
+};
+
 export type ClientMessage =
   | {
       type: "init";
@@ -74,6 +94,12 @@ export type ClientMessage =
         injectClassId: string;
         propertyName: string;
         injectorType: "inject" | "injectFactory";
+      };
+    }
+  | {
+      type: "class-open";
+      data: {
+        classId: string;
       };
     };
 
