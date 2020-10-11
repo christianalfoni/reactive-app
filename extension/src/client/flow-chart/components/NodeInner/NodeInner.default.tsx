@@ -5,6 +5,7 @@ import { IConfig, INode } from "../..";
 import { useBackend } from "../../../backend";
 import { HiLink, HiOutlineEye } from "react-icons/hi";
 import { RiShareBoxLine } from "react-icons/ri";
+import { colors } from "../../../../design-tokens";
 
 export interface INodeInnerDefaultProps {
   className?: string;
@@ -19,6 +20,7 @@ const Outer = styled.div`
 const Property = styled.div`
   display: flex;
   align-items: center;
+  color: ${colors.terminal.foreground};
   margin-bottom: 4px;
   > :first-child {
     margin-right: 4px;
@@ -37,14 +39,14 @@ const Header = styled.div`
 `;
 
 const StringValue = styled.span`
-  color: orange;
+  color: ${colors.terminal.ansiYellow};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
 const NumberValue = styled.span`
-  color: blue;
+  color: ${colors.terminal.ansiBlue};
 `;
 
 const EditValue = styled(RiShareBoxLine)<{ disabled?: boolean }>((props) =>

@@ -1,13 +1,14 @@
 import { observer } from "mobx-react";
 import * as React from "react";
-import { MdEdit } from "react-icons/md";
+import { MdEdit, MdKeyboardArrowRight } from "react-icons/md";
 import styled from "styled-components";
 import { useBackend } from "../../backend";
 import { HiOutlineEye, HiLink } from "react-icons/hi";
+import { MdKeyboardArrowLeft } from "react-icons/md";
 import ValueInspector from "../ValueInspector";
 import { ClassInstance, Injector, Observable } from "../../../types";
 import { RiArrowDownSLine, RiArrowRightSLine } from "react-icons/ri";
-import { INode } from "../../flow-chart";
+import { actions, INode } from "../../flow-chart";
 import { colors, space } from "../../../design-tokens";
 
 const InjectionItem = styled.div`
@@ -155,10 +156,34 @@ const Title = styled.h3`
   margin-top: 0;
 `;
 
+const ClassNavigation = styled.div`
+  display: flex;
+  margin-left: auto;
+`;
+
 const EditFile = styled(MdEdit)`
-  margin-right: ${space[1]};
+  margin-left: ${space[2]};
   cursor: pointer;
   color: ${colors.icon.foreground};
+`;
+
+const InstanceSelector = styled.div`
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: normal;
+`;
+
+const InstanceSelectorLeft = styled(MdKeyboardArrowLeft)<{ disabled: boolean }>`
+  cursor: ${(props) => (props.disabled ? "default" : "pointer")};
+  opacity: ${(props) => (props.disabled ? "0.5" : "1")};
+`;
+
+const InstanceSelectorRight = styled(MdKeyboardArrowRight)<{
+  disabled: boolean;
+}>`
+  cursor: ${(props) => (props.disabled ? "default" : "pointer")};
+  opacity: ${(props) => (props.disabled ? "0.5" : "1")};
 `;
 
 export const CurrentClass = observer(({ id }: { id: string }) => {
@@ -168,16 +193,67 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
     ? node.properties.instances[node.properties.currentInstanceId]
     : null;
   const injectors = node.properties.injectors;
+  const sortedInstanceIds = Object.keys(node.properties.instances)
+    .map(Number)
+    .sort();
 
   return (
     <Wrapper>
       <Title>
         {node.properties.name}
-        <EditFile
-          onClick={() => {
-            backend.actions.onOpenClass(id);
-          }}
-        />
+        <ClassNavigation>
+          {node.properties.currentInstanceId !== null ? (
+            <InstanceSelector>
+              <InstanceSelectorLeft
+                disabled={
+                  sortedInstanceIds[0] === node.properties.currentInstanceId
+                }
+                onClick={
+                  sortedInstanceIds[0] === node.properties.currentInstanceId
+                    ? undefined
+                    : () => {
+                        backend.actions.onInstanceClick(
+                          id,
+                          sortedInstanceIds[
+                            sortedInstanceIds.indexOf(
+                              node.properties.currentInstanceId!
+                            ) - 1
+                          ]
+                        );
+                      }
+                }
+              />
+              {sortedInstanceIds.indexOf(node.properties.currentInstanceId) + 1}{" "}
+              / {sortedInstanceIds.length}
+              <InstanceSelectorRight
+                disabled={
+                  sortedInstanceIds[sortedInstanceIds.length - 1] ===
+                  node.properties.currentInstanceId
+                }
+                onClick={
+                  sortedInstanceIds[sortedInstanceIds.length - 1] ===
+                  node.properties.currentInstanceId
+                    ? undefined
+                    : () => {
+                        backend.actions.onInstanceClick(
+                          id,
+                          sortedInstanceIds[
+                            sortedInstanceIds.indexOf(
+                              node.properties.currentInstanceId!
+                            ) + 1
+                          ]
+                        );
+                      }
+                }
+              />
+            </InstanceSelector>
+          ) : null}
+          <EditFile
+            onClick={() => {
+              backend.actions.onOpenClass(id);
+            }}
+          />
+        </ClassNavigation>
       </Title>
       <div>
         {injectors.map((injector) => (

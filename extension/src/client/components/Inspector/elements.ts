@@ -5,7 +5,7 @@ export const Wrapper = styled.div({
   fontFamily: "'Source Code Pro', monospace",
   fontSize: 16,
   lineHeight: "24px",
-  color: "var(--input.foreground)",
+  color: colors.terminal.foreground,
 });
 
 export const SmallWrapper = styled.div({
@@ -16,7 +16,7 @@ export const SmallWrapper = styled.div({
 
 export const Key = styled.span({
   marginRight: 5,
-  color: "var(--input.foreground)",
+  color: colors.terminal.foreground,
   cursor: "pointer",
   ":hover": {
     opacity: 0.75,
