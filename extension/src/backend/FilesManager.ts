@@ -92,11 +92,15 @@ export const app = createApp({})
     const classNode = ast.getClassNode(node, classId);
     const injectors = ast.getInjectors(classNode);
     const observables = ast.getObservables(classNode);
+    // const computed = ast.getComputed(classNode);
+    // const actions = ast.getActions(classNode);
 
     return {
       classId,
       injectors,
       observables,
+      computed: [],
+      actions: [],
     };
   }
   private getClassIdFromUri(uri: vscode.Uri) {
@@ -131,11 +135,15 @@ export const app = createApp({})
         const classNode = ast.getClassNode(node, classId);
         const injectors = ast.getInjectors(classNode);
         const observables = ast.getObservables(classNode);
+        const computed = ast.getComputed(classNode);
+        const actions = ast.getActions(classNode);
 
         aggr[classId] = {
           classId,
           injectors,
           observables,
+          computed,
+          actions,
         };
 
         return aggr;

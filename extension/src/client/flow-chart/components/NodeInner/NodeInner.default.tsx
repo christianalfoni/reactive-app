@@ -3,8 +3,9 @@ import * as React from "react";
 import styled from "styled-components";
 import { IConfig, INode } from "../..";
 import { useBackend } from "../../../backend";
-import { HiLink, HiOutlineEye } from "react-icons/hi";
+import { HiCog, HiLink, HiOutlineEye } from "react-icons/hi";
 import { RiShareBoxLine } from "react-icons/ri";
+import { AiOutlineCode } from "react-icons/ai";
 import { colors } from "../../../../design-tokens";
 
 export interface INodeInnerDefaultProps {
@@ -125,6 +126,42 @@ export const NodeInnerDefault = observer(
                     ? renderValue(
                         node.properties.instances[instanceId].values[
                           observable.name
+                        ]
+                      )
+                    : null}
+                </span>
+              </Property>
+            );
+          })}
+          {node.properties.computed.map((computed) => {
+            return (
+              <Property key={computed.name}>
+                <HiCog />{" "}
+                <span>
+                  {computed.name}{" "}
+                  {instanceId &&
+                  node.properties.instances[instanceId].values[computed.name]
+                    ? renderValue(
+                        node.properties.instances[instanceId].values[
+                          computed.name
+                        ]
+                      )
+                    : null}
+                </span>
+              </Property>
+            );
+          })}
+          {node.properties.actions.map((action) => {
+            return (
+              <Property key={action.name}>
+                <AiOutlineCode />{" "}
+                <span>
+                  {action.name}{" "}
+                  {instanceId &&
+                  node.properties.instances[instanceId].values[action.name]
+                    ? renderValue(
+                        node.properties.instances[instanceId].values[
+                          action.name
                         ]
                       )
                     : null}

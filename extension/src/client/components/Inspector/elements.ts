@@ -47,6 +47,16 @@ export const OtherValue = styled.div({
   color: colors.terminal.ansiMagenta,
 });
 
+export const ClassInstanceLabel = styled.div({
+  display: "flex",
+  alignItems: "center",
+  color: colors.terminal.ansiMagenta,
+  cursor: "pointer",
+  ":hover": {
+    opacity: 0.9,
+  },
+});
+
 export const InlineClass = styled.span({
   color: colors.terminal.ansiMagenta,
   marginRight: "0.5rem",

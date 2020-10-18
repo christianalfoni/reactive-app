@@ -28,10 +28,20 @@ export type Observable = {
   name: string;
 };
 
+export type Computed = {
+  name: string;
+};
+
+export type Action = {
+  name: string;
+};
+
 export type ExtractedClass = {
   classId: string;
   injectors: Injector[];
   observables: Observable[];
+  computed: Computed[];
+  actions: Action[];
 };
 
 export type Class = {
@@ -55,6 +65,8 @@ export type ClassNodeProperties = {
   currentInstanceId: number | null;
   injectors: Injector[];
   observables: Observable[];
+  computed: Computed[];
+  actions: Action[];
   instances: {
     [id: string]: ClassInstance;
   };

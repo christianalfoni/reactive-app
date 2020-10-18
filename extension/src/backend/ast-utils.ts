@@ -125,6 +125,44 @@ export function getObservables(node: ts.ClassDeclaration) {
   }, []);
 }
 
+export function getComputed(node: ts.ClassDeclaration) {
+  return node.members.reduce<Observable[]>((aggr, member) => {
+    if (ts.isGetAccessor(member)) {
+      const identifier =
+        member.decorators && ts.isIdentifier(member.decorators[0].expression)
+          ? member.decorators[0].expression
+          : undefined;
+
+      if (identifier && identifier.text === "computed") {
+        return aggr.concat({
+          name: (member.name as ts.Identifier).text,
+        });
+      }
+    }
+
+    return aggr;
+  }, []);
+}
+
+export function getActions(node: ts.ClassDeclaration) {
+  return node.members.reduce<Observable[]>((aggr, member) => {
+    if (ts.isMethodDeclaration(member)) {
+      const identifier =
+        member.decorators && ts.isIdentifier(member.decorators[0].expression)
+          ? member.decorators[0].expression
+          : undefined;
+
+      if (identifier && identifier.text === "action") {
+        return aggr.concat({
+          name: (member.name as ts.Identifier).text,
+        });
+      }
+    }
+
+    return aggr;
+  }, []);
+}
+
 export function addImportDeclaration(
   node: ts.SourceFile,
   {

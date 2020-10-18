@@ -1,6 +1,6 @@
 import { observable } from "mobx";
 import * as React from "react";
-import { colors, getVariableValue } from "../../design-tokens";
+import { getVariableValue } from "../../design-tokens";
 import { Backend, BackendMessage, ClientMessage, Injector } from "../../types";
 import { IChart, INode } from "../flow-chart";
 import * as actions from "../flow-chart/container/actions";
@@ -156,7 +156,15 @@ window.addEventListener("message", (event) => {
     }
     case "classes": {
       chart.nodes = Object.keys(message.data).reduce<any>((aggr, key) => {
-        const { classId, x, y, injectors, observables } = message.data[key];
+        const {
+          classId,
+          x,
+          y,
+          injectors,
+          observables,
+          computed,
+          actions,
+        } = message.data[key];
         aggr[classId] = observable({
           id: classId,
           type: "Class",
@@ -185,6 +193,8 @@ window.addEventListener("message", (event) => {
             name: key,
             injectors,
             observables,
+            computed,
+            actions,
             instances: observable({}),
             currentInstanceId: null,
           },
@@ -199,7 +209,7 @@ window.addEventListener("message", (event) => {
           Object.assign(
             aggr,
             message.data[key].injectors.reduce<any>((aggr, injector) => {
-              const linkId = `${injector.classId}_${injector.propertyName}`;
+              const linkId = `${classId}_${injector.classId}_${injector.propertyName}`;
               aggr[linkId] = {
                 id: linkId,
                 from: {
@@ -257,9 +267,6 @@ window.addEventListener("message", (event) => {
           }
 
           instance.injections[data.propertyName].push(data.injectInstanceId);
-
-          console.log("ADDED INJECTION!");
-
           break;
         }
         case "update": {

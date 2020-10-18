@@ -16,15 +16,24 @@ import {
   SmallWrapper,
   StringValue,
   InlineNested,
+  ClassInstanceLabel,
 } from "./elements";
 import { isArray, isObject, isValidJson } from "./utils";
+
+export type GetClassValue = (
+  name: string,
+  instanceId: number
+) => Record<string, unknown>;
+
+export type SelectClassInstance = (name: string, instanceId: number) => void;
 
 function renderValue({
   path,
   value,
   delimiter,
-  renderPaths,
   expandedPaths,
+  getClassValue,
+  selectClassInstance,
   onClickPath,
   onToggleExpand,
   selectedStatePath,
@@ -34,13 +43,13 @@ function renderValue({
   selectedStatePath?: string;
   onToggleExpand: (path: string[]) => void;
   path: string;
+  getClassValue: GetClassValue;
+  selectClassInstance: SelectClassInstance;
   delimiter: string;
   value: any;
-  renderPaths?: RenderPaths;
   expandedPaths: string[];
   onClickPath?: (path: string[]) => void;
 }) {
-  const wrapper = renderPaths && renderPaths[path];
   let node;
 
   if (isObject(value)) {
@@ -50,11 +59,11 @@ function renderValue({
         startBracket="{"
         endBracket="}"
         path={path}
+        getClassValue={getClassValue}
+        selectClassInstance={selectClassInstance}
         delimiter={delimiter}
         expandedPaths={expandedPaths}
-        hasWrapper={Boolean(wrapper)}
         onClickPath={onClickPath}
-        renderPaths={renderPaths}
         onToggleExpand={onToggleExpand}
         isArray={false}
         value={value}
@@ -69,10 +78,10 @@ function renderValue({
         startBracket="["
         endBracket="]"
         delimiter={delimiter}
-        renderPaths={renderPaths}
         path={path}
+        getClassValue={getClassValue}
+        selectClassInstance={selectClassInstance}
         expandedPaths={expandedPaths}
-        hasWrapper={Boolean(wrapper)}
         onClickPath={onClickPath}
         onToggleExpand={onToggleExpand}
         isArray
@@ -90,13 +99,12 @@ function renderValue({
         value={value}
         onClickPath={onClickPath}
         selectedStatePath={selectedStatePath}
-        hasWrapper={Boolean(wrapper)}
         onSubmitState={onSubmitState}
       />
     );
   }
 
-  return wrapper ? wrapper(node) : node;
+  return node;
 }
 
 type PathKeyProps = {
@@ -171,10 +179,10 @@ type NestedProps = {
   startBracket: string;
   endBracket: string;
   expandedPaths: string[];
-  renderPaths?: RenderPaths;
   delimiter: string;
   path: string;
-  hasWrapper: boolean;
+  getClassValue: GetClassValue;
+  selectClassInstance: SelectClassInstance;
   isArray: boolean;
   value: any;
   onToggleExpand: (path: string[]) => void;
@@ -190,9 +198,9 @@ const Nested: FunctionComponent<NestedProps> = memo(
     onToggleExpand,
     onClickPath,
     startBracket,
-    renderPaths,
-    hasWrapper,
     endBracket,
+    getClassValue,
+    selectClassInstance,
     isArray,
     selectedStatePath,
     value,
@@ -201,6 +209,14 @@ const Nested: FunctionComponent<NestedProps> = memo(
   }) => {
     const shouldCollapse = !expandedPaths.includes(path);
     const isClass = value.__CLASS__;
+    const classValue: any = isClass
+      ? getClassValue(value.__CLASS__, value.__INSTANCE_ID__)
+      : null;
+    const className = isClass
+      ? `${value.__CLASS__} ${value.__INSTANCE_ID__}`
+      : null;
+
+    console.log("IS CLASS?", isClass);
 
     if (onSubmitState && selectedStatePath && path === selectedStatePath) {
       return (
@@ -212,7 +228,7 @@ const Nested: FunctionComponent<NestedProps> = memo(
         >
           {path.length ? <Key>{path.split(delimiter).pop()}:</Key> : null}
           <EditValue
-            value={isClass ? value.value : value}
+            value={isClass ? classValue : value}
             onSubmit={onSubmitState}
           />
         </InlineNested>
@@ -220,7 +236,7 @@ const Nested: FunctionComponent<NestedProps> = memo(
     }
 
     if (shouldCollapse) {
-      const keys = isClass ? Object.keys(value.value) : Object.keys(value);
+      const keys = isClass ? Object.keys(classValue) : Object.keys(value);
 
       return (
         <InlineNested
@@ -234,7 +250,7 @@ const Nested: FunctionComponent<NestedProps> = memo(
             delimiter={delimiter}
             onClickPath={onClickPath}
             onToggleExpand={onToggleExpand}
-            disabled={!onSubmitState || hasWrapper}
+            disabled={!onSubmitState}
           />
           {startBracket}
           <KeyCount>
@@ -242,7 +258,6 @@ const Nested: FunctionComponent<NestedProps> = memo(
               keys.length + " items"
             ) : (
               <InlineNested>
-                {isClass ? <InlineClass>{value.name}</InlineClass> : null}{" "}
                 {keys.sort().slice(0, 3).join(", ") + "..."}
               </InlineNested>
             )}
@@ -266,7 +281,7 @@ const Nested: FunctionComponent<NestedProps> = memo(
             delimiter={delimiter}
             onClickPath={onClickPath}
             onToggleExpand={onToggleExpand}
-            disabled={!onSubmitState || hasWrapper}
+            disabled={!onSubmitState}
           />
           {startBracket}
         </Bracket>
@@ -277,8 +292,9 @@ const Nested: FunctionComponent<NestedProps> = memo(
                   path: path.concat((path ? delimiter : "") + String(index)),
                   delimiter,
                   value: value[index],
-                  renderPaths,
                   expandedPaths,
+                  getClassValue,
+                  selectClassInstance,
                   onClickPath,
                   onSubmitState,
                   onToggleExpand,
@@ -287,19 +303,23 @@ const Nested: FunctionComponent<NestedProps> = memo(
               )
             : isClass
             ? [
-                <OtherValue
+                <ClassInstanceLabel
+                  onClick={() => {
+                    selectClassInstance(value.__CLASS__, value.__INSTANCE_ID__);
+                  }}
                   key={path.concat((path ? delimiter : "") + "__CLASS__")}
                 >
-                  {value.name}
-                </OtherValue>,
-                ...Object.keys(value.value)
+                  {className}
+                </ClassInstanceLabel>,
+                ...Object.keys(classValue)
                   .sort()
                   .map((key) => {
                     return renderValue({
                       path: path.concat((path ? delimiter : "") + key),
-                      value: value.value[key],
+                      value: classValue[key],
                       delimiter,
-                      renderPaths,
+                      getClassValue,
+                      selectClassInstance,
                       expandedPaths,
                       onClickPath,
                       onSubmitState,
@@ -315,7 +335,8 @@ const Nested: FunctionComponent<NestedProps> = memo(
                     path: path.concat((path ? delimiter : "") + key),
                     value: value[key],
                     delimiter,
-                    renderPaths,
+                    getClassValue,
+                    selectClassInstance,
                     expandedPaths,
                     onClickPath,
                     onSubmitState,
@@ -333,7 +354,6 @@ const Nested: FunctionComponent<NestedProps> = memo(
 type ValueComponentProps = {
   value: string | number | boolean;
   path: string;
-  hasWrapper: boolean;
   onClickPath?: (path: string[]) => void;
   delimiter: string;
   selectedStatePath?: string;
@@ -347,7 +367,6 @@ const ValueComponent: FunctionComponent<ValueComponentProps> = memo(
     onClickPath,
     selectedStatePath,
     onSubmitState,
-    hasWrapper,
     delimiter,
   }) => {
     const [isHoveringString, setHoveringString] = useState(false);
@@ -372,7 +391,7 @@ const ValueComponent: FunctionComponent<ValueComponentProps> = memo(
             path={path}
             delimiter={delimiter}
             onClickPath={onClickPath}
-            disabled={!onSubmitState || hasWrapper}
+            disabled={!onSubmitState}
           />
           {value.substr(1, value.length - 2)}
         </OtherValue>
@@ -386,7 +405,7 @@ const ValueComponent: FunctionComponent<ValueComponentProps> = memo(
             path={path}
             delimiter={delimiter}
             onClickPath={onClickPath}
-            disabled={!onSubmitState || hasWrapper}
+            disabled={!onSubmitState}
           />
           <div
             onMouseOver={() => setHoveringString(true)}
@@ -408,7 +427,7 @@ const ValueComponent: FunctionComponent<ValueComponentProps> = memo(
           path={path}
           delimiter={delimiter}
           onClickPath={onClickPath}
-          disabled={!onSubmitState || hasWrapper}
+          disabled={!onSubmitState}
         />
         {String(value)}
       </GenericValue>
@@ -416,18 +435,15 @@ const ValueComponent: FunctionComponent<ValueComponentProps> = memo(
   }
 );
 
-export type RenderPaths = {
-  [path: string]: (children: JSX.Element) => React.ReactNode;
-};
-
 type InspectorProps = {
   value: Record<string, unknown>;
   expandedPaths: string[];
   delimiter: string;
+  getClassValue: GetClassValue;
+  selectClassInstance: SelectClassInstance;
   small?: boolean;
   onToggleExpand: (path: string[]) => void;
   onClickPath?: (path: string[]) => void;
-  renderPaths?: RenderPaths;
   selectedStatePath?: string;
   onSubmitState?: (newState: string) => void;
 };
@@ -437,9 +453,10 @@ const Inspector: FunctionComponent<InspectorProps> = ({
   expandedPaths,
   small,
   onToggleExpand,
+  getClassValue,
+  selectClassInstance,
   delimiter,
   onClickPath,
-  renderPaths,
   selectedStatePath = "",
   onSubmitState,
 }) => {
@@ -449,8 +466,9 @@ const Inspector: FunctionComponent<InspectorProps> = ({
       {renderValue({
         path: "",
         delimiter,
+        getClassValue,
+        selectClassInstance,
         value,
-        renderPaths,
         expandedPaths,
         onClickPath,
         onToggleExpand,
