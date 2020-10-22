@@ -15,7 +15,7 @@ import { getWorkspaceUri } from "./utils";
 export class BackendPanel {
   public static currentPanel: BackendPanel | undefined;
 
-  public static readonly viewType = "catCoding";
+  public static readonly viewType = "reactiveApp";
 
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
@@ -38,7 +38,7 @@ export class BackendPanel {
     // Otherwise, create a new panel.
     const panel = vscode.window.createWebviewPanel(
       BackendPanel.viewType,
-      "Cat Coding",
+      "Reactive App",
       column || vscode.ViewColumn.One,
       {
         // Enable javascript in the webview
@@ -216,7 +216,7 @@ export class BackendPanel {
 				  -->
 				  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${this._panel.webview.cspSource} https:; script-src 'nonce-${nonce}' 'unsafe-eval'; style-src ${this._panel.webview.cspSource} 'unsafe-inline';">
 				  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Cat Coding</title>
+          <title>Reactive App</title>
 			  </head>
 			  <body>
 				  <div id="app"></div>

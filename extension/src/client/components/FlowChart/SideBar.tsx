@@ -57,6 +57,8 @@ export const SideBar = observer(() => {
           currentInstanceId: null,
           injectors: [],
           observables: [],
+          computed: [],
+          actions: [],
           instances: {},
         }}
       />

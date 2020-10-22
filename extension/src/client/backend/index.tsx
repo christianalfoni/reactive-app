@@ -298,6 +298,39 @@ window.addEventListener("message", (event) => {
           break;
         }
         case "splice": {
+          const instances =
+            chart.nodes[appMessage.data.classId].properties.instances;
+          const targetKey = appMessage.data.path.pop()!;
+
+          if (instances[appMessage.data.instanceId]) {
+            const targetBase = appMessage.data.path.reduce(
+              (aggr, key) => aggr[key],
+              instances[appMessage.data.instanceId].values
+            );
+
+            if (targetBase[targetKey]) {
+              targetBase[targetKey].splice(
+                appMessage.data.index,
+                appMessage.data.deleteCount,
+                ...appMessage.data.items
+              );
+            } else {
+              targetBase[targetKey] = appMessage.data.items;
+            }
+          } else {
+            instances[appMessage.data.instanceId] = observable({
+              values: observable({
+                [targetKey]: appMessage.data.items,
+              }),
+              injections: observable({}),
+            });
+          }
+
+          if (Object.keys(instances).length === 1) {
+            chart.nodes[appMessage.data.classId].properties.currentInstanceId =
+              appMessage.data.instanceId;
+          }
+
           break;
         }
       }

@@ -1,8 +1,8 @@
 {
-  "name": "cat-coding",
-  "description": "Cat Coding - A Webview API Sample",
+  "name": "reactive-app",
+  "description": "Reactive App - Building complex apps",
   "version": "0.0.1",
-  "publisher": "vscode-samples",
+  "publisher": "Christian Alfoni",
   "engines": {
     "vscode": "^1.47.0"
   },
@@ -10,9 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:catCoding.start",
-    "onCommand:catCoding.doRefactor",
-    "onWebviewPanel:catCoding"
+    "onCommand:reactiveApp.start"
   ],
   "repository": {
     "type": "git",
@@ -22,14 +20,9 @@
   "contributes": {
     "commands": [
       {
-        "command": "catCoding.start",
-        "title": "Start cat coding session",
-        "category": "Cat Coding"
-      },
-      {
-        "command": "catCoding.doRefactor",
-        "title": "Do some refactoring",
-        "category": "Cat Coding"
+        "command": "reactiveApp.start",
+        "title": "Start Reactive App editor",
+        "category": "Reactive App"
       }
     ]
   }

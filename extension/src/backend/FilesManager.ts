@@ -74,8 +74,8 @@ export class FilesManager {
       // We do not have the file, lets write it
       await vscode.workspace.fs.writeFile(
         entryFile,
-        new TextEncoder().encode(`import { createApp } from '${LIBRARY_IMPORT}'
-export const app = createApp({})
+        new TextEncoder().encode(`import { Container } from '${LIBRARY_IMPORT}'
+export const container = new Container({}, { devtool: process.env.NODE_ENV === 'development' ? "localhost:5051" : undefined })
 `)
       );
     }
@@ -201,17 +201,27 @@ export const app = createApp({})
           isType: false,
         });
       }
-      if (ts.isObjectLiteralExpression(node)) {
-        return ts.factory.createObjectLiteralExpression(
-          [
-            ...node.properties,
-            ts.factory.createShorthandPropertyAssignment(classId, undefined),
-          ],
-          undefined
+      if (ts.isNewExpression(node) && node.arguments) {
+        const classes = node.arguments[0] as ts.ObjectLiteralExpression;
+
+        return ts.factory.createNewExpression(
+          node.expression,
+          node.typeArguments,
+          ([
+            ts.factory.createObjectLiteralExpression(
+              [
+                ...classes.properties,
+                ts.factory.createShorthandPropertyAssignment(
+                  classId,
+                  undefined
+                ),
+              ],
+              undefined
+            ),
+          ] as any).concat(node.arguments.slice(1))
         );
       }
     });
-
     await vscode.workspace.fs.writeFile(
       file,
       new TextEncoder().encode(newCode)

@@ -3,7 +3,7 @@ import { BackendPanel } from "./backend/BackendPanel";
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    vscode.commands.registerCommand("catCoding.start", () => {
+    vscode.commands.registerCommand("reactiveApp.start", () => {
       BackendPanel.createOrShow(context.extensionUri);
     })
   );

@@ -216,8 +216,6 @@ const Nested: FunctionComponent<NestedProps> = memo(
       ? `${value.__CLASS__} ${value.__INSTANCE_ID__}`
       : null;
 
-    console.log("IS CLASS?", isClass);
-
     if (onSubmitState && selectedStatePath && path === selectedStatePath) {
       return (
         <InlineNested
