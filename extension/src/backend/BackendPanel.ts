@@ -126,7 +126,7 @@ export class BackendPanel {
         });
         return;
       case "class-new": {
-        this.filesManager.writeClass(message.data.classId);
+        this.filesManager.writeClass(message.data.classId, message.data.type);
         this.filesManager.writeMetadata(message.data);
         break;
       }

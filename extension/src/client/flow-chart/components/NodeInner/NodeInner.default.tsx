@@ -6,6 +6,7 @@ import { useBackend } from "../../../backend";
 import { HiCog, HiLink, HiOutlineEye } from "react-icons/hi";
 import { RiShareBoxLine } from "react-icons/ri";
 import { AiOutlineCode } from "react-icons/ai";
+import { BiCurrentLocation } from "react-icons/bi";
 import { colors } from "../../../../design-tokens";
 
 export interface INodeInnerDefaultProps {
@@ -30,13 +31,7 @@ const Property = styled.div`
 
 const Header = styled.div`
   display: flex;
-  align-items: center;
-  > :first-child {
-    margin-right: auto;
-  }
-  > :last-child {
-    margin-left: 6px;
-  }
+  flex-direction: column;
 `;
 
 const StringValue = styled.span`
@@ -46,8 +41,30 @@ const StringValue = styled.span`
   text-overflow: ellipsis;
 `;
 
+const CurrentState = styled.div`
+  color: ${colors.terminal.ansiBlue};
+`;
+
+const CurrentStateIcon = styled(BiCurrentLocation)`
+  color: ${colors.terminal.ansiBlue};
+`;
+
 const NumberValue = styled.span`
   color: ${colors.terminal.ansiBlue};
+`;
+
+const NameChangeForm = styled.form`
+  margin-bottom: 1rem;
+`;
+
+const Name = styled.h3`
+  margin-top: 0;
+`;
+
+const Type = styled.div`
+  font-size: 10px;
+  margin-bottom: 0.25rem;
+  color: ${colors.terminal.ansiMagenta};
 `;
 
 const EditValue = styled(RiShareBoxLine)<{ disabled?: boolean }>((props) =>
@@ -84,7 +101,7 @@ export const NodeInnerDefault = observer(
       <Outer className={className}>
         <div>
           {node.properties.isEditing ? (
-            <form
+            <NameChangeForm
               onSubmit={(event) => {
                 event.preventDefault();
                 backend.actions.onNameSubmit(node, name);
@@ -97,13 +114,26 @@ export const NodeInnerDefault = observer(
                   setName(event.target.value);
                 }}
               />
-            </form>
+            </NameChangeForm>
           ) : (
             <Header>
-              <h3>{node.properties.name}</h3>
+              <Type>{node.type}</Type>
+              <Name>{node.properties.name}</Name>
             </Header>
           )}
         </div>
+        {node.type === "StateMachine" && instanceId ? (
+          <Property>
+            <CurrentStateIcon />
+            <CurrentState>
+              {node.properties.instances[instanceId].values.state.current}
+            </CurrentState>
+          </Property>
+        ) : node.type === "StateMachine" ? (
+          <Property>
+            <CurrentStateIcon />
+          </Property>
+        ) : null}
         <div>
           {node.properties.injectors.map((injector) => {
             return (

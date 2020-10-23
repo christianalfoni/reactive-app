@@ -62,6 +62,35 @@ export const SideBar = observer(() => {
           instances: {},
         }}
       />
+      <ClassItem
+        type="StateMachine"
+        ports={{
+          input: {
+            id: "input",
+            type: "top",
+            properties: {
+              linkColor: getVariableValue("activityBar-activeBorder"),
+            },
+          },
+          output: {
+            id: "output",
+            type: "bottom",
+            properties: {
+              linkColor: getVariableValue("activityBar-activeBorder"),
+            },
+          },
+        }}
+        properties={{
+          name: "",
+          isEditing: true,
+          currentInstanceId: null,
+          injectors: [],
+          observables: [{ name: "state" }],
+          computed: [],
+          actions: [],
+          instances: {},
+        }}
+      />
       <h3>Class inspector</h3>
       {backend.chart.selected && backend.chart.selected.id ? (
         <CurrentClass id={backend.chart.selected.id!} />

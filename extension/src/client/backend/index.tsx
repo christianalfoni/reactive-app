@@ -90,6 +90,7 @@ const backend = observable<ClientBackend>({
           classId: node.id,
           x: node.position.x,
           y: node.position.y,
+          type: node.type,
         },
       });
     },
@@ -164,10 +165,11 @@ window.addEventListener("message", (event) => {
           observables,
           computed,
           actions,
+          type,
         } = message.data[key];
         aggr[classId] = observable({
           id: classId,
-          type: "Class",
+          type,
           ports: {
             input: {
               id: "input",

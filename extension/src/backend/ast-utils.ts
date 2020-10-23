@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { Injector, Observable } from "../types";
+import { ClassTypes, Injector, Observable } from "../types";
 
 export function transformTypescript(
   code: Uint8Array,
@@ -71,6 +71,18 @@ export function isClassNode(
       ts.isIdentifier(node.name) &&
       node.name.text === name
   );
+}
+
+export function getClassType(node: ts.ClassDeclaration): ClassTypes {
+  if (
+    node.heritageClauses &&
+    ts.isIdentifier(node.heritageClauses[0].types[0].expression) &&
+    node.heritageClauses[0].types[0].expression.escapedText === "StateMachine"
+  ) {
+    return "StateMachine";
+  }
+
+  return "Class";
 }
 
 export function getInjectors(node: ts.ClassDeclaration): Injector[] {
@@ -294,7 +306,9 @@ export function addInjectionProperty(
       ),
     ],
     undefined,
-    ts.factory.createIdentifier(propertyName),
+    ts.factory.createIdentifier(
+      injectionType === "inject" ? name.toLowerCase() : `create${name}`
+    ),
     ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
     injectionType === "inject"
       ? ts.factory.createTypeReferenceNode(

@@ -38,6 +38,7 @@ export type Action = {
 
 export type ExtractedClass = {
   classId: string;
+  type: ClassTypes;
   injectors: Injector[];
   observables: Observable[];
   computed: Computed[];
@@ -72,6 +73,8 @@ export type ClassNodeProperties = {
   };
 };
 
+export type ClassTypes = "Class" | "StateMachine";
+
 export type ClientMessage =
   | {
       type: "init";
@@ -80,6 +83,7 @@ export type ClientMessage =
       type: "class-new";
       data: {
         classId: string;
+        type: ClassTypes;
         x: number;
         y: number;
       };

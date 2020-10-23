@@ -4,7 +4,7 @@ import * as path from "path";
 import { APP_DIR, CONFIGURATION_DIR, LIBRARY_IMPORT } from "../constants";
 import * as ast from "./ast-utils";
 import { getWorkspaceUri } from "./utils";
-import { ClassMetadata, ExtractedClass } from "../types";
+import { ClassMetadata, ClassTypes, ExtractedClass } from "../types";
 
 export class FilesManager {
   metadata: {
@@ -80,9 +80,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
       );
     }
   }
-  private async getClass(uri: vscode.Uri): Promise<ExtractedClass> {
-    const content = await vscode.workspace.fs.readFile(uri);
-    const classId = this.getClassIdFromUri(uri);
+  private extractClass(classId: string, content: Uint8Array) {
     const node = ts.createSourceFile(
       "temp.ts",
       new TextDecoder("utf-8").decode(content),
@@ -90,18 +88,29 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     );
 
     const classNode = ast.getClassNode(node, classId);
+    const type = ast.getClassType(classNode);
     const injectors = ast.getInjectors(classNode);
     const observables = ast.getObservables(classNode);
-    // const computed = ast.getComputed(classNode);
-    // const actions = ast.getActions(classNode);
+    const computed = ast.getComputed(classNode);
+    const actions = ast.getActions(classNode);
 
     return {
       classId,
+      type,
       injectors,
-      observables,
-      computed: [],
-      actions: [],
+      observables:
+        type === "StateMachine"
+          ? [{ name: "state" }].concat(observables)
+          : observables,
+      computed,
+      actions,
     };
+  }
+  private async getClass(uri: vscode.Uri): Promise<ExtractedClass> {
+    const content = await vscode.workspace.fs.readFile(uri);
+    const classId = this.getClassIdFromUri(uri);
+
+    return this.extractClass(classId, content);
   }
   private getClassIdFromUri(uri: vscode.Uri) {
     return path.basename(uri.path, ".ts");
@@ -126,25 +135,8 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
         [key: string]: ExtractedClass;
       }>((aggr, content, index) => {
         const classId = path.basename(files[index], ".ts");
-        const node = ts.createSourceFile(
-          "temp.ts",
-          new TextDecoder("utf-8").decode(content),
-          ts.ScriptTarget.Latest
-        );
 
-        const classNode = ast.getClassNode(node, classId);
-        const injectors = ast.getInjectors(classNode);
-        const observables = ast.getObservables(classNode);
-        const computed = ast.getComputed(classNode);
-        const actions = ast.getActions(classNode);
-
-        aggr[classId] = {
-          classId,
-          injectors,
-          observables,
-          computed,
-          actions,
-        };
+        aggr[classId] = this.extractClass(classId, content);
 
         return aggr;
       }, {});
@@ -179,13 +171,43 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   /*
     This method writes the initial file content
   */
-  async writeClass(classId: string) {
+  async writeClass(classId: string, type: ClassTypes) {
     const file = getWorkspaceUri(APP_DIR, classId + ".ts")!;
 
-    await vscode.workspace.fs.writeFile(
-      file,
-      new TextEncoder().encode(`export class ${classId} {}`)
-    );
+    let code: string;
+
+    switch (type) {
+      case "Class":
+        code = `export class ${classId} {}`;
+        break;
+      case "StateMachine":
+        code = `import { StateMachine } from "${LIBRARY_IMPORT}/StateMachine";
+
+export type TState =
+  | {
+      current: "FOO";
+    }
+  | {
+      current: "BAR";
+    };
+
+export type TEvent = 
+  | {
+      type: "THIS_HAPPENED"
+    }
+  | {
+      type: "THAT_HAPPENED"
+    };
+
+export class ${classId} extends StateMachine<TState, TEvent> {
+  onMessage(event: TEvent): TState | void {
+
+  }
+}
+`;
+    }
+
+    await vscode.workspace.fs.writeFile(file, new TextEncoder().encode(code));
 
     await this.writeClassToEntryFile(classId);
   }

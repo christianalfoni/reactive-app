@@ -1,4 +1,9 @@
-import { ClassNodeProperties, Injector, Observable } from "../../../types";
+import {
+  ClassNodeProperties,
+  ClassTypes,
+  Injector,
+  Observable,
+} from "../../../types";
 import { IPosition, ISize } from "./generics";
 
 export type IChart<ChartProps = undefined, LinkProps = undefined> = {
@@ -28,7 +33,7 @@ export interface ISelectedOrHovered {
 
 export type INode = {
   id: string;
-  type: string;
+  type: ClassTypes;
   position: IPosition;
   orientation?: number;
   readonly?: boolean;
