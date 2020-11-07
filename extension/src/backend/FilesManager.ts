@@ -94,14 +94,21 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     const computed = ast.getComputed(classNode);
     const actions = ast.getActions(classNode);
 
+    const initialObservables = [];
+
+    if (type === "StateMachine") {
+      initialObservables.push({ name: "state" });
+    }
+
+    if (type === "Entity") {
+      initialObservables.push({ name: "disposables" });
+    }
+
     return {
       classId,
       type,
       injectors,
-      observables:
-        type === "StateMachine"
-          ? [{ name: "state" }].concat(observables)
-          : observables,
+      observables: initialObservables.concat(observables),
       computed,
       actions,
     };
@@ -174,7 +181,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   async writeClass(classId: string, type: ClassTypes) {
     const file = getWorkspaceUri(APP_DIR, classId + ".ts")!;
 
-    let code: string;
+    let code = "";
 
     switch (type) {
       case "Class":
@@ -200,11 +207,24 @@ export type TEvent =
     };
 
 export class ${classId} extends StateMachine<TState, TEvent> {
-  onMessage(event: TEvent): TState | void {
+  constructor(state: TSTate) {
+    super(state)
+  }
+  
+  private onMessage(event: TEvent): TState | void {
 
   }
 }
 `;
+        break;
+      case "Entity":
+        code = `import { Entity } from "${LIBRARY_IMPORT}/Entity";
+
+export class ${classId} extends Entity {
+  
+}
+`;
+        break;
     }
 
     await vscode.workspace.fs.writeFile(file, new TextEncoder().encode(code));

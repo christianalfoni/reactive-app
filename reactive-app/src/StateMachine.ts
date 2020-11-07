@@ -1,13 +1,16 @@
+import { observable } from ".";
+
 export class StateMachine<
-  S extends { current: string },
-  E extends { type: string }
+  S extends { current: string; [key: string]: unknown },
+  E extends { type: string; [key: string]: unknown }
 > {
+  @observable
   state: S;
   constructor(state: S) {
     this.state = state;
   }
   onMessage(_: E): S | void {
-    throw new Error("Implement this!");
+    throw new Error("Please implement the onMessage handler");
   }
   send(event: E) {
     const newState = this.onMessage(event);
@@ -26,8 +29,8 @@ export class StateMachine<
   }
   dispose() {
     for (const key in this.state) {
-      const value = this.state[key];
-      if (value instanceof StateMachine) {
+      const value = this.state[key] as { dispose?: () => void };
+      if (value && typeof value.dispose === "function") {
         value.dispose();
       }
     }

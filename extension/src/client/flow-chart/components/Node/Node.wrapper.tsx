@@ -83,7 +83,7 @@ export const NodeWrapper = ({
   onLinkCancel,
 }: INodeWrapperProps) => {
   const { zoomScale } = React.useContext(CanvasContext);
-  const [size, setSize] = React.useState<ISize>({ width: 0, height: 0 });
+
   const [portsSize, setPortsSize] = React.useState<ISize>({
     width: 0,
     height: 0,
@@ -152,25 +152,17 @@ export const NodeWrapper = ({
   React.useLayoutEffect(() => {
     const el = compRef.current as HTMLInputElement;
     if (el) {
-      if (
-        (node.size && node.size.width) !== el.offsetWidth ||
-        (node.size && node.size.height) !== el.offsetHeight
-      ) {
-        const newSize = { width: el.offsetWidth, height: el.offsetHeight };
-        setSize(newSize);
-        onNodeSizeChange({ config, nodeId: node.id, size: newSize });
-      }
+      console.log("RESIZING WTF?");
+      onNodeSizeChange({
+        config,
+        nodeId: node.id,
+        size: { width: el.offsetWidth, height: el.offsetHeight },
+      });
     }
-  }, [node, compRef.current, size.width, size.height]);
+  }, [compRef.current]);
 
   const children = (
     <div style={{ minWidth: portsSize.width, minHeight: portsSize.height }}>
-      <ResizeObserver
-        onResize={(rect) => {
-          const newSize = { width: rect.width, height: rect.height };
-          setSize(newSize);
-        }}
-      />
       <NodeInner node={node} config={config} />
 
       <Ports node={node} config={config} onResize={setPortsSize}>

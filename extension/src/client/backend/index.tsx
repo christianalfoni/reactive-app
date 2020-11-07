@@ -21,6 +21,7 @@ export type ClientBackend = {
 } & Backend;
 
 export const chart: IChart = observable({
+  preventResizing: false,
   offset: {
     x: 0,
     y: 0,

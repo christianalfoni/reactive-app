@@ -73,7 +73,7 @@ export type ClassNodeProperties = {
   };
 };
 
-export type ClassTypes = "Class" | "StateMachine";
+export type ClassTypes = "Class" | "StateMachine" | "Entity";
 
 export type ClientMessage =
   | {

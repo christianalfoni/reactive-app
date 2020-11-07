@@ -73,14 +73,23 @@ export function isClassNode(
   );
 }
 
-export function getClassType(node: ts.ClassDeclaration): ClassTypes {
-  if (
-    node.heritageClauses &&
-    ts.isIdentifier(node.heritageClauses[0].types[0].expression) &&
-    node.heritageClauses[0].types[0].expression.escapedText === "StateMachine"
-  ) {
-    return "StateMachine";
+export function getInheritanceName(node: ts.ClassDeclaration): string | void {
+  if (!node.heritageClauses) {
+    return;
   }
+
+  if (!ts.isIdentifier(node.heritageClauses[0].types[0].expression)) {
+    return;
+  }
+
+  return node.heritageClauses[0].types[0].expression.escapedText;
+}
+
+export function getClassType(node: ts.ClassDeclaration): ClassTypes {
+  const inheritenceName = getInheritanceName(node);
+
+  if (inheritenceName === "StateMachine") return "StateMachine";
+  if (inheritenceName === "Entity") return "Entity";
 
   return "Class";
 }
