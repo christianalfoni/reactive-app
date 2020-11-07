@@ -152,7 +152,6 @@ export const NodeWrapper = ({
   React.useLayoutEffect(() => {
     const el = compRef.current as HTMLInputElement;
     if (el) {
-      console.log("RESIZING WTF?");
       onNodeSizeChange({
         config,
         nodeId: node.id,
@@ -162,9 +161,8 @@ export const NodeWrapper = ({
   }, [compRef.current]);
 
   const children = (
-    <div style={{ minWidth: portsSize.width, minHeight: portsSize.height }}>
+    <div>
       <NodeInner node={node} config={config} />
-
       <Ports node={node} config={config} onResize={setPortsSize}>
         {Object.keys(node.ports).map((portId) => (
           <PortWrapper
