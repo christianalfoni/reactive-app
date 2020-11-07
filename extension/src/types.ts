@@ -38,7 +38,7 @@ export type Action = {
 
 export type ExtractedClass = {
   classId: string;
-  type: ClassTypes;
+  mixins: Mixin[];
   injectors: Injector[];
   observables: Observable[];
   computed: Computed[];
@@ -60,8 +60,15 @@ export type ClassInstance = {
   };
 };
 
+export enum Mixin {
+  Disposable = "Disposable",
+  Async = "Async",
+  StateMachine = "StateMachine",
+}
+
 export type ClassNodeProperties = {
   name: string;
+  mixins: Mixin[];
   isEditing: boolean;
   currentInstanceId: number | null;
   injectors: Injector[];
@@ -73,8 +80,6 @@ export type ClassNodeProperties = {
   };
 };
 
-export type ClassTypes = "Class" | "StateMachine" | "Entity";
-
 export type ClientMessage =
   | {
       type: "init";
@@ -83,7 +88,7 @@ export type ClientMessage =
       type: "class-new";
       data: {
         classId: string;
-        type: ClassTypes;
+        mixins: Mixin[];
         x: number;
         y: number;
       };

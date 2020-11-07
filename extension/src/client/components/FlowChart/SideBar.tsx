@@ -32,7 +32,6 @@ export const SideBar = observer(() => {
 
   return (
     <Sidebar>
-      <h3>Classes</h3>
       <ClassItem
         type="Class"
         ports={{
@@ -57,64 +56,6 @@ export const SideBar = observer(() => {
           currentInstanceId: null,
           injectors: [],
           observables: [],
-          computed: [],
-          actions: [],
-          instances: {},
-        }}
-      />
-      <ClassItem
-        type="StateMachine"
-        ports={{
-          input: {
-            id: "input",
-            type: "top",
-            properties: {
-              linkColor: getVariableValue("activityBar-activeBorder"),
-            },
-          },
-          output: {
-            id: "output",
-            type: "bottom",
-            properties: {
-              linkColor: getVariableValue("activityBar-activeBorder"),
-            },
-          },
-        }}
-        properties={{
-          name: "",
-          isEditing: true,
-          currentInstanceId: null,
-          injectors: [],
-          observables: [{ name: "state" }],
-          computed: [],
-          actions: [],
-          instances: {},
-        }}
-      />
-      <ClassItem
-        type="Entity"
-        ports={{
-          input: {
-            id: "input",
-            type: "top",
-            properties: {
-              linkColor: getVariableValue("activityBar-activeBorder"),
-            },
-          },
-          output: {
-            id: "output",
-            type: "bottom",
-            properties: {
-              linkColor: getVariableValue("activityBar-activeBorder"),
-            },
-          },
-        }}
-        properties={{
-          name: "",
-          isEditing: true,
-          currentInstanceId: null,
-          injectors: [],
-          observables: [{ name: "disposables" }],
           computed: [],
           actions: [],
           instances: {},

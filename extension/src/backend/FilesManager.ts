@@ -4,7 +4,7 @@ import * as path from "path";
 import { APP_DIR, CONFIGURATION_DIR, LIBRARY_IMPORT } from "../constants";
 import * as ast from "./ast-utils";
 import { getWorkspaceUri } from "./utils";
-import { ClassMetadata, ClassTypes, ExtractedClass } from "../types";
+import { ClassMetadata, ExtractedClass, Mixin } from "../types";
 
 export class FilesManager {
   metadata: {
@@ -88,7 +88,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     );
 
     const classNode = ast.getClassNode(node, classId);
-    const type = ast.getClassType(classNode);
+    const mixins = ast.getClassMixins(node, classId);
     const injectors = ast.getInjectors(classNode);
     const observables = ast.getObservables(classNode);
     const computed = ast.getComputed(classNode);
@@ -96,17 +96,13 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
 
     const initialObservables = [];
 
-    if (type === "StateMachine") {
+    if (mixins.includes(Mixin.StateMachine)) {
       initialObservables.push({ name: "state" });
-    }
-
-    if (type === "Entity") {
-      initialObservables.push({ name: "disposables" });
     }
 
     return {
       classId,
-      type,
+      mixins,
       injectors,
       observables: initialObservables.concat(observables),
       computed,
@@ -178,53 +174,52 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   /*
     This method writes the initial file content
   */
-  async writeClass(classId: string, type: ClassTypes) {
+  async writeClass(classId: string, mixins: Mixin[]) {
     const file = getWorkspaceUri(APP_DIR, classId + ".ts")!;
 
     let code = "";
 
-    switch (type) {
-      case "Class":
-        code = `export class ${classId} {}`;
-        break;
-      case "StateMachine":
-        code = `import { StateMachine } from "${LIBRARY_IMPORT}/StateMachine";
+    if (mixins.length) {
+      code += `import { applyMixins, ${mixins.join(
+        ", "
+      )} } from "${LIBRARY_IMPORT}/mixins";`;
+    }
+
+    if (mixins.includes(Mixin.StateMachine)) {
+      code += `
+export class ${classId} {
+  onMessage(event: TEvent): TState | void {
+
+  }
+}
 
 export type TState =
   | {
       current: "FOO";
-    }
-  | {
-      current: "BAR";
     };
 
-export type TEvent = 
+  export type TEvent = 
   | {
-      type: "THIS_HAPPENED"
-    }
-  | {
-      type: "THAT_HAPPENED"
+      type: "BAR"
     };
-
-export class ${classId} extends StateMachine<TState, TEvent> {
-  constructor(state: TSTate) {
-    super(state)
-  }
-  
-  private onMessage(event: TEvent): TState | void {
-
-  }
-}
 `;
-        break;
-      case "Entity":
-        code = `import { Entity } from "${LIBRARY_IMPORT}/Entity";
+    } else {
+      code += `
+export class ${classId} {}`;
+    }
 
-export class ${classId} extends Entity {
-  
-}
+    if (mixins.length) {
+      code += `
+export interface ${classId} extends ${mixins.map((mixin) => {
+        if (mixin === Mixin.StateMachine) {
+          return "StateMachine<TState, TEvent>";
+        }
+
+        return mixin;
+      })} {}
+
+applyMixins(${classId}, [${mixins.join(", ")}]);
 `;
-        break;
     }
 
     await vscode.workspace.fs.writeFile(file, new TextEncoder().encode(code));

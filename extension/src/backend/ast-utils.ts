@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { ClassTypes, Injector, Observable } from "../types";
+import { Injector, Mixin, Observable } from "../types";
 
 export function transformTypescript(
   code: Uint8Array,
@@ -73,25 +73,28 @@ export function isClassNode(
   );
 }
 
-export function getInheritanceName(node: ts.ClassDeclaration): string | void {
-  if (!node.heritageClauses) {
-    return;
-  }
+export function getClassMixins(node: ts.SourceFile, classId: string): Mixin[] {
+  const mixins: Mixin[] = [];
 
-  if (!ts.isIdentifier(node.heritageClauses[0].types[0].expression)) {
-    return;
-  }
+  node.statements.forEach((statement) => {
+    if (
+      ts.isInterfaceDeclaration(statement) &&
+      statement.name.escapedText === classId &&
+      statement.heritageClauses &&
+      statement.heritageClauses[0]
+    ) {
+      statement.heritageClauses[0].types.forEach((heritageType) => {
+        if (
+          ts.isIdentifier(heritageType.expression) &&
+          (heritageType.expression.escapedText as string) in Mixin
+        ) {
+          mixins.push(heritageType.expression.escapedText as Mixin);
+        }
+      });
+    }
+  });
 
-  return node.heritageClauses[0].types[0].expression.escapedText;
-}
-
-export function getClassType(node: ts.ClassDeclaration): ClassTypes {
-  const inheritenceName = getInheritanceName(node);
-
-  if (inheritenceName === "StateMachine") return "StateMachine";
-  if (inheritenceName === "Entity") return "Entity";
-
-  return "Class";
+  return mixins;
 }
 
 export function getInjectors(node: ts.ClassDeclaration): Injector[] {

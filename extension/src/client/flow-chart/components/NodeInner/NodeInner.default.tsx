@@ -8,6 +8,7 @@ import { RiShareBoxLine } from "react-icons/ri";
 import { AiOutlineCode } from "react-icons/ai";
 import { BiCurrentLocation } from "react-icons/bi";
 import { colors } from "../../../../design-tokens";
+import { Mixin } from "../../../../types";
 
 export interface INodeInnerDefaultProps {
   className?: string;
@@ -71,6 +72,14 @@ const EditValue = styled(RiShareBoxLine)<{ disabled?: boolean }>((props) =>
   props.disabled ? `opacity: 0.5;` : `cursor: pointer;`
 );
 
+const MixinItem = styled.div`
+  display: flex;
+  align-items: center;
+  > input {
+    margin-right: 4px;
+  }
+`;
+
 function renderValue(value: any) {
   if (typeof value === "string") {
     return <StringValue>"{value}"</StringValue>;
@@ -93,31 +102,65 @@ export const NodeInnerDefault = observer(
   ({ node, className }: INodeInnerDefaultProps) => {
     const backend = useBackend();
     const [name, setName] = React.useState(node.properties.name);
+    const nameInput = React.useRef<HTMLInputElement | null>(null);
+    const [mixins, setMixins] = React.useState<Mixin[]>([]);
     const instanceId =
       node.properties.currentInstanceId ||
       Object.keys(node.properties.instances)[0];
+
+    const toggleMixin = (mixin: Mixin) => {
+      setMixins((current) => {
+        if (current.includes(mixin)) {
+          return current.filter((item) => item !== mixin);
+        }
+
+        return current.concat(mixin);
+      });
+    };
 
     return (
       <Outer className={className}>
         <div>
           {node.properties.isEditing ? (
-            <NameChangeForm
-              onSubmit={(event) => {
-                event.preventDefault();
-                backend.actions.onNameSubmit(node, name);
-              }}
-            >
-              <input
-                autoFocus
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
+            <div>
+              <NameChangeForm
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  backend.actions.onClassSubmit(node, name, mixins);
                 }}
-              />
-            </NameChangeForm>
+              >
+                <input
+                  ref={nameInput}
+                  autoFocus
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                  }}
+                />
+              </NameChangeForm>
+              <h4>Capabilities</h4>
+              {Object.values(Mixin).map((mixin) => (
+                <MixinItem>
+                  <input
+                    type="checkbox"
+                    checked={mixins.includes(mixin)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (nameInput.current) nameInput.current.focus();
+                    }}
+                    onChange={() => {
+                      toggleMixin(mixin);
+                    }}
+                  />
+                  <label>{mixin}</label>
+                </MixinItem>
+              ))}
+            </div>
           ) : (
             <Header>
-              <Type>{node.type}</Type>
+              {node.properties.mixins.length ? (
+                <Type>{node.properties.mixins.join(", ")}</Type>
+              ) : null}
               <Name>{node.properties.name}</Name>
             </Header>
           )}

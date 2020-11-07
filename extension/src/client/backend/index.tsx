@@ -1,19 +1,27 @@
-import { observable } from "mobx";
+import { observable, reaction } from "mobx";
 import * as React from "react";
 import { getVariableValue } from "../../design-tokens";
-import { Backend, BackendMessage, ClientMessage, Injector } from "../../types";
+import {
+  Backend,
+  BackendMessage,
+  ClientMessage,
+  Injector,
+  Mixin,
+} from "../../types";
 import { IChart, INode } from "../flow-chart";
 import * as actions from "../flow-chart/container/actions";
 
 // @ts-ignore
 const vscode = acquireVsCodeApi();
 
+const oldState = vscode.getState();
+
 export type ClientBackend = {
   chart: IChart;
   chartActions: typeof actions;
   actions: {
     onInstanceClick(classId: string, instanceId: number): void;
-    onNameSubmit(node: INode, newName: string): void;
+    onClassSubmit(node: INode, name: string, mixins: Mixin[]): void;
     onToggleInjectorType(node: INode, injector: Injector): void;
     onOpenClass(classId: string): void;
   };
@@ -22,10 +30,12 @@ export type ClientBackend = {
 
 export const chart: IChart = observable({
   preventResizing: false,
-  offset: {
-    x: 0,
-    y: 0,
-  },
+  offset: oldState
+    ? oldState.offset
+    : {
+        x: 0,
+        y: 0,
+      },
   scale: 1,
   nodes: {},
   links: {},
@@ -37,6 +47,10 @@ const send = (message: ClientMessage) => vscode.postMessage(message);
 
 const chartEvents: { [key: string]: (...args: any[]) => void } = {
   onDragNodeStop: ((data) => {
+    if (chart.nodes[data.id].properties.isEditing) {
+      return;
+    }
+
     send({
       type: "class-update",
       data: {
@@ -77,13 +91,13 @@ const backend = observable<ClientBackend>({
   }, {}),
   send,
   actions: {
-    onNameSubmit(node, newName) {
+    onClassSubmit(node, name, mixins) {
       delete chart.nodes[node.id];
-      node.id = newName;
-      node.properties.name = newName;
+      node.id = name;
+      node.properties.name = name;
       node.properties.isEditing = false;
 
-      chart.nodes[newName] = node;
+      chart.nodes[name] = node;
 
       send({
         type: "class-new",
@@ -91,7 +105,7 @@ const backend = observable<ClientBackend>({
           classId: node.id,
           x: node.position.x,
           y: node.position.y,
-          type: node.type,
+          mixins,
         },
       });
     },
@@ -166,11 +180,11 @@ window.addEventListener("message", (event) => {
           observables,
           computed,
           actions,
-          type,
+          mixins,
         } = message.data[key];
         aggr[classId] = observable({
           id: classId,
-          type,
+          type: "Class",
           ports: {
             input: {
               id: "input",
@@ -193,6 +207,7 @@ window.addEventListener("message", (event) => {
           },
           properties: {
             isEditing: false,
+            mixins,
             name: key,
             injectors,
             observables,
@@ -350,6 +365,16 @@ export const BackendProvider: React.FC = ({ children }) => {
       type: "init",
     });
   }, []);
+  React.useEffect(
+    () =>
+      reaction(
+        () => [chart.offset.x, chart.offset.y],
+        ([x, y]) => {
+          vscode.setState({ offset: { x, y } });
+        }
+      ),
+    []
+  );
   return (
     <backendContext.Provider value={backend}>
       {children}
