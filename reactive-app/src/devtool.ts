@@ -20,7 +20,7 @@ export interface IDevtool {
 export type TDebugMessage = (
   | {
       type: "instance";
-      data: {};
+      data: Record<string, unknown>;
     }
   | {
       type: "update";
@@ -61,7 +61,6 @@ export class Devtool implements IDevtool {
   } = {};
   private _onSpyInstantiation: ((change: TSpyChange) => void) | undefined;
   private onSpy(change: Parameters<Parameters<typeof spy>[0]>[0]) {
-    console.log(change);
     switch (change.type) {
       case "add": {
         // @ts-ignore
@@ -77,21 +76,16 @@ export class Devtool implements IDevtool {
 
         let value: any = change.newValue;
 
-        try {
-          if (change.newValue && change.newValue[INSTANCE_ID]) {
-            value = {
-              __INSTANCE_ID__: change.newValue[INSTANCE_ID],
-              __CLASS__: change.newValue.constructor.name,
-            };
-          } else if (Array.isArray(change.newValue)) {
-            // For some reason we got both an "add" and "splice" event here,
-            // so we let splice take care of this
-            value = [];
-          }
-        } catch {
-          // Not able to acces using symbol for some reason
+        if (change.newValue && change.newValue[INSTANCE_ID]) {
+          value = {
+            __INSTANCE_ID__: change.newValue[INSTANCE_ID],
+            __CLASS__: change.newValue.constructor.name,
+          };
+        } else if (Array.isArray(change.newValue)) {
+          // For some reason we got both an "add" and "splice" event here,
+          // so we let splice take care of this
+          value = [];
         }
-
         this.send!({
           type: "update",
           data: {
@@ -159,15 +153,11 @@ export class Devtool implements IDevtool {
   private stringifyAndSend = (message: TDebugMessage) => {
     this.ws.send(
       JSON.stringify(message, (key, value) => {
-        try {
-          if (value && value[INSTANCE_ID]) {
-            return {
-              __INSTANCE_ID__: value[INSTANCE_ID],
-              __CLASS__: value.constructor.name,
-            };
-          }
-        } catch {
-          // Not able to use symbol for some reason
+        if (value && value[INSTANCE_ID]) {
+          return {
+            __INSTANCE_ID__: value[INSTANCE_ID],
+            __CLASS__: value.constructor.name,
+          };
         }
 
         return value;
