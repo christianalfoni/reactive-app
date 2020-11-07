@@ -1,4 +1,3 @@
-import { debounce } from "lodash";
 import { observable } from "mobx";
 import {
   IChart,
@@ -29,10 +28,6 @@ import {
 } from "..";
 import { rotate } from "./utils/rotate";
 
-let allowResizingSoon = debounce((chart) => {
-  chart.preventResizing = false;
-}, 1000);
-
 function getOffset(config: any, data: any, zoom?: number) {
   let offset = { x: data.x, y: data.y };
   if (config && config.snapToGrid) {
@@ -61,7 +56,6 @@ export const onDragNode: IStateCallback<IOnDragNode> = ({
   const nodechart = chart.nodes[id];
 
   if (nodechart) {
-    allowResizingSoon(chart);
     const delta = {
       x: data.deltaX,
       y: data.deltaY,
@@ -83,7 +77,6 @@ export const onDragNodeStop: IStateCallback<IOnDragNodeStop> = () => identity;
 export const onDragCanvas: IOnDragCanvas = ({ config, data }) => (
   chart: IChart
 ): IChart => {
-  allowResizingSoon(chart);
   chart.offset = getOffset(config, { x: data.positionX, y: data.positionY });
   return chart;
 };
@@ -278,8 +271,6 @@ export const onNodeSizeChange: IStateCallback<IOnNodeSizeChange> = ({
   nodeId,
   size,
 }) => (chart: IChart) => {
-  if (chart.preventResizing) return chart;
-
   console.log("RESIZING");
   chart.nodes[nodeId] = {
     ...chart.nodes[nodeId],
@@ -346,8 +337,6 @@ export const onZoomCanvas: IOnZoomCanvas = ({ config, data }) => (
   chart: IChart
 ): IChart => {
   chart.offset = getOffset(config, { x: data.positionX, y: data.positionY });
-  chart.preventResizing = true;
   chart.scale = data.scale;
-  allowResizingSoon(chart);
   return chart;
 };

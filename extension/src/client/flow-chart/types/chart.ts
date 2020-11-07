@@ -8,7 +8,6 @@ import { IPosition, ISize } from "./generics";
 
 export type IChart<ChartProps = undefined, LinkProps = undefined> = {
   offset: IPosition;
-  preventResizing: boolean;
   nodes: {
     [id: string]: INode;
   };
