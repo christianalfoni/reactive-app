@@ -18,7 +18,7 @@ export class Disposable {
   _disposables: DisposableValue[] = [];
   _isDisposed = false;
 
-  disposable(disposable: DisposableValue) {
+  onDispose(disposable: DisposableValue) {
     this._disposables.push(disposable);
     return () => {
       this._disposables.splice(this._disposables.indexOf(disposable), 1);

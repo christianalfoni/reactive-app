@@ -180,43 +180,48 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     let code = "";
 
     if (mixins.length) {
-      code += `import { applyMixins, ${mixins.join(
-        ", "
-      )} } from "${LIBRARY_IMPORT}/mixins";`;
+      code += `import { applyMixins, ${mixins
+        .map((mixin) =>
+          mixin === Mixin.StateMachine
+            ? "StateMachine, StateMachineTransitions"
+            : mixin
+        )
+        .join(", ")} } from "${LIBRARY_IMPORT}/mixins";
+
+export interface ${classId} extends ${mixins.map((mixin) => {
+        if (mixin === Mixin.StateMachine) {
+          return "StateMachine<TState>";
+        }
+
+        return mixin;
+      })} {}
+      `;
     }
 
     if (mixins.includes(Mixin.StateMachine)) {
       code += `
-export class ${classId} {
-  onMessage(event: TEvent): TState | void {
-
-  }
-}
-
 export type TState =
-  | {
-      current: "FOO";
-    };
+  | { current: "FOO" }
+  | { current: "BAR" };
 
-  export type TEvent = 
-  | {
-      type: "BAR"
-    };
-`;
+export class ${classId} {
+  readonly transitions: StateMachineTransitions<TState> =  {
+    FOO: {
+      BAR: true
+    },
+    BAR: {
+      FOO: true
+    }
+  }
+}`;
     } else {
       code += `
+
 export class ${classId} {}`;
     }
 
     if (mixins.length) {
       code += `
-export interface ${classId} extends ${mixins.map((mixin) => {
-        if (mixin === Mixin.StateMachine) {
-          return "StateMachine<TState, TEvent>";
-        }
-
-        return mixin;
-      })} {}
 
 applyMixins(${classId}, [${mixins.join(", ")}]);
 `;

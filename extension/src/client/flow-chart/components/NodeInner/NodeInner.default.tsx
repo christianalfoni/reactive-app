@@ -80,6 +80,22 @@ const MixinItem = styled.div`
   }
 `;
 
+const NameInput = styled.input`
+  outline: none;
+  font-size: 16px;
+  color: ${colors.foreground};
+  background-color: transparent;
+  border: 0;
+  border-bottom: 1px solid ${colors.activityBar.border};
+  font-weight: bold;
+  &:active,
+  &:focus {
+    border: 0;
+    outline: none;
+    border-bottom: 1px solid ${colors.activityBar.border};
+  }
+`;
+
 function renderValue(value: any) {
   if (typeof value === "string") {
     return <StringValue>"{value}"</StringValue>;
@@ -108,6 +124,12 @@ export const NodeInnerDefault = observer(
       node.properties.currentInstanceId ||
       Object.keys(node.properties.instances)[0];
 
+    React.useEffect(() => {
+      backend.chartActions.onNodeClick({
+        nodeId: node.id,
+      });
+    }, [node.properties.isEditing]);
+
     const toggleMixin = (mixin: Mixin) => {
       setMixins((current) => {
         if (current.includes(mixin)) {
@@ -129,10 +151,14 @@ export const NodeInnerDefault = observer(
                   backend.actions.onClassSubmit(node, name, mixins);
                 }}
               >
-                <input
+                <NameInput
                   ref={nameInput}
+                  placeholder="Name..."
                   autoFocus
                   value={name}
+                  onKeyDown={(event) => {
+                    event.stopPropagation();
+                  }}
                   onChange={(event) => {
                     setName(event.target.value);
                   }}
@@ -165,14 +191,14 @@ export const NodeInnerDefault = observer(
             </Header>
           )}
         </div>
-        {node.type === "StateMachine" && instanceId ? (
+        {node.properties.mixins.includes(Mixin.StateMachine) && instanceId ? (
           <Property>
             <CurrentStateIcon />
             <CurrentState>
               {node.properties.instances[instanceId].values.state.current}
             </CurrentState>
           </Property>
-        ) : node.type === "StateMachine" ? (
+        ) : node.properties.mixins.includes(Mixin.StateMachine) ? (
           <Property>
             <CurrentStateIcon />
           </Property>

@@ -330,6 +330,7 @@ export const onCanvasDrop: IStateCallback<IOnCanvasDrop> = ({
     ports: data.ports,
     properties: data.properties,
   });
+
   return chart;
 };
 

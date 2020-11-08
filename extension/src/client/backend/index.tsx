@@ -96,8 +96,11 @@ const backend = observable<ClientBackend>({
       node.id = name;
       node.properties.name = name;
       node.properties.isEditing = false;
+      node.properties.mixins = mixins;
 
       chart.nodes[name] = node;
+
+      chart.selected = { id: name };
 
       send({
         type: "class-new",

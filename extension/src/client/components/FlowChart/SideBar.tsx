@@ -55,6 +55,7 @@ export const SideBar = observer(() => {
           isEditing: true,
           currentInstanceId: null,
           injectors: [],
+          mixins: [],
           observables: [],
           computed: [],
           actions: [],
