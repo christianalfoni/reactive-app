@@ -1,14 +1,25 @@
 {
-  "name": "reactive-app-repo",
-  "description": "The repo for reactive-app",
+  "name": "reactive-app",
+  "version": "0.0.1",
+  "description": "Build large scale applications supported by visual tools",
+  "repository": "git@github.com:christianalfoni/reactive-app",
+  "author": "Christian Alfoni <christianalfoni@gmail.com>",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "module": "es/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./extension",
-    "lint": "eslint . --ext .ts,.tsx",
-    "extension:watch": "tsc -w -p ./extension",
-    "extension:dev": "parcel extension/src/client/index.tsx --port 5050"
+    "build": "npm run build:lib & npm run build:es",
+    "build:lib": "tsc -p ./runtime --outDir lib --module commonjs",
+    "build:es": "tsc -p ./runtime --outDir es --module es2015",
+    "editor:watch": "tsc -w -p ./editor",
+    "editor:dev": "parcel editor/index.html --port 5050"
   },
   "dependencies": {
+    "electron": "^10.1.5",
+    "mobx": "^6.0.3"
+  },
+  "devDependencies": {
     "@types/lodash": "^4.14.161",
     "@types/node": "^14.11.2",
     "@types/pathfinding": "0.0.4",
@@ -18,7 +29,6 @@
     "@types/uuid": "^8.3.0",
     "@types/ws": "^7.2.7",
     "lodash": "^4.17.20",
-    "mobx": "^6.0.0-rc.8",
     "mobx-react": "^6.3.0",
     "parcel-bundler": "^1.12.4",
     "pathfinding": "^0.4.18",
@@ -30,9 +40,7 @@
     "react-zoom-pan-pinch": "^1.6.1",
     "styled-components": "^5.2.0",
     "uuid": "^8.3.0",
-    "ws": "^7.3.1"
-  },
-  "devDependencies": {
+    "ws": "^7.3.1",
     "@types/vscode": "^1.50.0",
     "@typescript-eslint/eslint-plugin": "^3.0.2",
     "@typescript-eslint/parser": "^3.0.2",

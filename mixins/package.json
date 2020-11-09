@@ -1,0 +1,8 @@
+{
+  "name": "reactive-app/mixins",
+  "private": true,
+  "main": "../lib/mixins",
+  "module": "../es/mixins",
+  "jsnext:main": "../es/mixins",
+  "typings": "../lib/mixins.d.ts"
+}

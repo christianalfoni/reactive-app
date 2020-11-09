@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+	  "module": "commonjs",
+	  "target": "es2019",
+	  "lib": ["ES2019", "DOM"],
+	  "esModuleInterop": true,
+	  "outDir": "out",
+	  "jsx": "react",
+	  "sourceMap": true,
+	  "strict": true,
+	  "rootDir": "src",
+	  "skipLibCheck": true
+	},
+	"exclude": ["node_modules"]
+  }
+  
