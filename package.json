@@ -17,9 +17,11 @@
   },
   "dependencies": {
     "electron": "^10.1.5",
-    "mobx": "^6.0.3"
+    "mobx": "^6.0.3",
+    "prettier": "^2.1.2"
   },
   "devDependencies": {
+    "@types/prettier": "^2.1.5",
     "@types/lodash": "^4.14.161",
     "@types/node": "^14.11.2",
     "@types/pathfinding": "0.0.4",

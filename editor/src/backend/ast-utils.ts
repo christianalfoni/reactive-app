@@ -1,15 +1,29 @@
 import * as ts from "typescript";
 import { Injector, Mixin, Observable } from "../common/types";
 
+const LINE_BREAK = "REACTIVE_LINE_BREAK";
+const NEW_LINE_BREAK = "NEW_REACTIVE_LINE_BREAK";
+
+function addLineBreak(node: ts.Node) {
+  ts.setSyntheticTrailingComments(node, [
+    {
+      pos: -1,
+      end: -1,
+      text: ` ${NEW_LINE_BREAK}`,
+      kind: ts.SyntaxKind.SingleLineCommentTrivia,
+    },
+  ]);
+}
+
 export function transformTypescript(
   code: Uint8Array,
   cb: (node: ts.Node) => ts.Node | void
 ) {
-  const node = ts.createSourceFile(
+  const sourceNode = ts.createSourceFile(
     "temp.ts",
     new TextDecoder("utf-8")
       .decode(code)
-      .replace(/^\s*\n/gm, "// REACTIVE_APP_LINE_BREAK\n"),
+      .replace(/^\s*\n/gm, `// ${LINE_BREAK}\n`),
     ts.ScriptTarget.Latest
   );
 
@@ -17,14 +31,17 @@ export function transformTypescript(
     context: ts.TransformationContext
   ) => (rootNode: T) => {
     function visit(node: ts.Node): ts.Node {
-      return ts.visitEachChild(cb(node) || node, visit, context);
+      const visitedNode = cb(node) || node;
+
+      return ts.visitEachChild(visitedNode, visit, context);
     }
     return ts.visitNode(rootNode, visit);
   };
 
-  const result: ts.TransformationResult<ts.SourceFile> = ts.transform(node, [
-    transformer,
-  ]);
+  const result: ts.TransformationResult<ts.SourceFile> = ts.transform(
+    sourceNode,
+    [transformer]
+  );
 
   const transformedSourceFile = result.transformed[0];
 
@@ -34,7 +51,8 @@ export function transformTypescript(
 
   return printer
     .printFile(transformedSourceFile)
-    .replace(new RegExp("// REACTIVE_APP_LINE_BREAK", "gm"), "");
+    .replace(new RegExp(`// ${NEW_LINE_BREAK}`, "gm"), "\n")
+    .replace(new RegExp(`// ${LINE_BREAK}`, "gm"), "");
 }
 
 export function getClassNode(
@@ -253,18 +271,19 @@ export function addImportDeclaration(
       });
     };
 
-    return ts.factory.createSourceFile(
-      transformStatements(),
-      node.endOfFileToken,
-      node.flags
-    );
+    // When we return a new source file we loose the comments
+    // @ts-ignore
+    node.statements = transformStatements();
+
+    return node;
   } else if (!existingImportDeclaration) {
     const importDeclarationCount = node.statements.filter((statement) =>
       ts.isImportDeclaration(statement)
     ).length;
-    const newStatements = node.statements.slice();
 
-    newStatements.splice(
+    // When we return a new source file we loose the comments
+    // @ts-ignore
+    node.statements.splice(
       importDeclarationCount,
       0,
       ts.factory.createImportDeclaration(
@@ -283,11 +302,8 @@ export function addImportDeclaration(
         ts.factory.createStringLiteral(source)
       )
     );
-    return ts.factory.createSourceFile(
-      newStatements,
-      node.endOfFileToken,
-      node.flags
-    );
+
+    return node;
   }
 
   return node;
@@ -332,6 +348,8 @@ export function addInjectionProperty(
         ]),
     undefined
   );
+
+  addLineBreak(newProperty);
 
   return ts.factory.createClassDeclaration(
     node.decorators,

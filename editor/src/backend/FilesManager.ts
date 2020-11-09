@@ -8,6 +8,15 @@ import {
 } from "../common/constants";
 import * as ast from "./ast-utils";
 import { ClassMetadata, ExtractedClass, Mixin } from "../common/types";
+import * as prettier from "prettier";
+
+let prettierConfig = {};
+
+try {
+  prettierConfig = fs.readFileSync(path.resolve(".prettierrc"));
+} catch {
+  // No worries, just using defaults
+}
 
 export class FilesManager {
   metadata: {
@@ -16,6 +25,10 @@ export class FilesManager {
   classes: {
     [name: string]: ExtractedClass;
   } = {};
+
+  private writePrettyFile(path: string, content: string) {
+    return fs.promises.writeFile(path, new TextEncoder().encode(content));
+  }
 
   async initialize(listeners: {
     onClassChange: (name: string, e: ExtractedClass) => void;
@@ -71,11 +84,11 @@ export class FilesManager {
       await fs.promises.stat(entryFile);
     } catch {
       // We do not have the file, lets write it
-      await fs.promises.writeFile(
+      await this.writePrettyFile(
         entryFile,
-        new TextEncoder().encode(`import { Container } from '${LIBRARY_IMPORT}'
+        `import { Container } from '${LIBRARY_IMPORT}'
 export const container = new Container({}, { devtool: process.env.NODE_ENV === 'development' ? "localhost:5051" : undefined })
-`)
+`
       );
     }
   }
@@ -157,10 +170,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
       x,
       y,
     };
-    await fs.promises.writeFile(
-      file,
-      new TextEncoder().encode(JSON.stringify(this.metadata, null, 2))
-    );
+    await this.writePrettyFile(file, JSON.stringify(this.metadata, null, 2));
   }
   /*
     This method writes the initial file content
@@ -224,7 +234,7 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
 `;
     }
 
-    await fs.promises.writeFile(file, new TextEncoder().encode(code));
+    await this.writePrettyFile(file, code);
 
     await this.writeClassToEntryFile(classId);
   }
@@ -261,7 +271,7 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
         );
       }
     });
-    await fs.promises.writeFile(file, new TextEncoder().encode(newCode));
+    await this.writePrettyFile(file, newCode);
   }
   /*
     This method adds injections. The type of injection will be part of
@@ -301,7 +311,7 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
       }
     });
 
-    await fs.promises.writeFile(file, new TextEncoder().encode(newCode));
+    await this.writePrettyFile(file, newCode);
   }
   async replaceInjection(
     name: string,
@@ -346,6 +356,6 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
       }
     });
 
-    await fs.promises.writeFile(file, new TextEncoder().encode(newCode));
+    await this.writePrettyFile(file, newCode);
   }
 }

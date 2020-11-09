@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { Backend, Class, PackageJson } from "../common/types";
+import { Backend, PackageJson } from "../common/types";
 
 export class Initializer {
   private packageJsonWatcher:
