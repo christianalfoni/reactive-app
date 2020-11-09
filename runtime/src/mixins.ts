@@ -58,7 +58,7 @@ export class Disposable {
 }
 
 export class Async {
-  [IS_DISPOSED]?: boolean;
+  [IS_DISPOSED]: boolean;
   async async<T, S, E>(
     promise: Promise<T>,
     successCallback: (data: T) => S,

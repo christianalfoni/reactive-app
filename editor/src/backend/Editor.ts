@@ -1,5 +1,10 @@
+import { spawn } from "child_process";
 import { IncomingMessage } from "http";
+import * as path from "path";
+
 import * as WebSocket from "ws";
+
+import { APP_DIR } from "../common/constants";
 import {
   BackendMessage,
   Class,
@@ -126,13 +131,7 @@ export class Editor {
         break;
       }
       case "class-open": {
-        /*
-        const file = getWorkspaceUri(APP_DIR, message.data.classId + ".ts")!;
-        const openPath = vscode.Uri.parse(file.fsPath);
-        vscode.workspace.openTextDocument(openPath).then((doc) => {
-          vscode.window.showTextDocument(doc);
-				});
-				*/
+        spawn("code", [path.join(APP_DIR, message.data.classId + ".ts")]);
         break;
       }
       default:
