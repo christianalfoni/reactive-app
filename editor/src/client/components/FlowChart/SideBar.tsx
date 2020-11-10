@@ -1,13 +1,14 @@
 import { observer } from "mobx-react";
 import * as React from "react";
 import styled from "styled-components";
+
 import { colors, getVariableValue, space } from "../../../common/design-tokens";
 import { useBackend } from "../../backend";
 import { ClassItem } from "./ClassItem";
 import { CurrentClass } from "./CurrentClass";
 
 const Sidebar = styled.div`
-  width: 300px;
+  width: 400px;
   background: ${colors.gray[800]};
   color: ${colors.gray[200]};
   display: flex;

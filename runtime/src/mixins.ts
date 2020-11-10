@@ -132,6 +132,13 @@ export class StateMachine<
       return;
     }
 
+    // We automatically dispose of any disposables
+    Object.values(this.state).forEach((value: any) => {
+      if (value && value[IS_DISPOSED] === false) {
+        value.dispose();
+      }
+    });
+
     this.state = newState;
 
     return newState;

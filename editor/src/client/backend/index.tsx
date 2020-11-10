@@ -1,5 +1,6 @@
 import { observable, reaction } from "mobx";
 import * as React from "react";
+
 import { colors, getVariableValue } from "../../common/design-tokens";
 import {
   Backend,
@@ -161,6 +162,13 @@ ws.addEventListener("message", (event) => {
       Object.assign(backend, message.data);
       break;
     }
+    case "disconnect": {
+      Object.values(chart.nodes).forEach((node) => {
+        node.properties.currentInstanceId = null;
+        node.properties.instances = {};
+      });
+      break;
+    }
     case "class-update": {
       message.data.injectors.forEach((injector) => {
         const id = `${injector.classId}_${injector.propertyName}`;
@@ -184,6 +192,10 @@ ws.addEventListener("message", (event) => {
         message.data.injectors;
       chart.nodes[message.data.classId].properties.observables =
         message.data.observables;
+      chart.nodes[message.data.classId].properties.actions =
+        message.data.actions;
+      chart.nodes[message.data.classId].properties.computed =
+        message.data.computed;
       break;
     }
     case "classes": {

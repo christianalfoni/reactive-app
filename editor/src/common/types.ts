@@ -132,6 +132,9 @@ export type BackendMessage =
       data: Backend;
     }
   | {
+      type: "disconnect";
+    }
+  | {
       type: "classes";
       data: {
         [name: string]: Class;
