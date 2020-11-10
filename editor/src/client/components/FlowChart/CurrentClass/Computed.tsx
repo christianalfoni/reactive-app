@@ -1,10 +1,11 @@
 import { observer } from "mobx-react";
 import * as React from "react";
-import styled from "styled-components";
 import { HiCog } from "react-icons/hi";
-import ValueInspector from "../../ValueInspector";
-import { ClassInstance, Computed as TComputed } from "../../../../common/types";
+import styled from "styled-components";
+
 import { colors, space } from "../../../../common/design-tokens";
+import { ClassInstance, Computed as TComputed } from "../../../../common/types";
+import ValueInspector from "../../ValueInspector";
 
 const CurrentValueContainer = styled.div`
   display: flex;
@@ -32,7 +33,7 @@ export const Computed = observer(
     return (
       <ComputedWrapper>
         <ComputedIcon />
-        <strong>{computed.name}</strong>
+        {computed.name}
         <div>
           <CurrentValueContainer>
             {instance && computed.name in instance.values ? (

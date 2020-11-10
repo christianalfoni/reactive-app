@@ -1,13 +1,14 @@
 import { observer } from "mobx-react";
 import * as React from "react";
-import styled from "styled-components";
 import { HiOutlineEye } from "react-icons/hi";
-import ValueInspector from "../../ValueInspector";
+import styled from "styled-components";
+
+import { colors, space } from "../../../../common/design-tokens";
 import {
   ClassInstance,
   Observable as TObservable,
 } from "../../../../common/types";
-import { colors, space } from "../../../../common/design-tokens";
+import ValueInspector from "../../ValueInspector";
 
 const EditCurrentValueContainer = styled.div`
   display: flex;
@@ -17,6 +18,7 @@ const EditCurrentValueContainer = styled.div`
 const ObservableWrapper = styled.div`
   display: flex;
   align-items: center;
+  margin-bottom: ${space[2]};
 `;
 
 const ObservableIcon = styled(HiOutlineEye)`
@@ -35,7 +37,7 @@ export const Observable = observer(
     return (
       <ObservableWrapper>
         <ObservableIcon />
-        <strong>{observable.name}</strong>
+        {observable.name}
         <div>
           <EditCurrentValueContainer>
             {instance && observable.name in instance.values ? (

@@ -1,12 +1,13 @@
 import { observer } from "mobx-react";
 import * as React from "react";
-import styled from "styled-components";
-import { useBackend } from "../../../backend";
 import { HiLink } from "react-icons/hi";
-import { ClassInstance, Injector as TInjector } from "../../../../common/types";
 import { RiArrowDownSLine, RiArrowRightSLine } from "react-icons/ri";
-import { INode } from "../../../flow-chart";
+import styled from "styled-components";
+
 import { colors, space } from "../../../../common/design-tokens";
+import { ClassInstance, Injector as TInjector } from "../../../../common/types";
+import { useBackend } from "../../../backend";
+import { INode } from "../../../flow-chart";
 
 const InjectionItem = styled.div`
   background-color: ${colors.gray[700]};
@@ -48,6 +49,10 @@ const InstanceWrapper = styled.div`
   cursor: pointer;
 `;
 
+const Wrapper = styled.div`
+  margin-bottom: ${space[2]};
+`;
+
 export const Injector = observer(
   ({
     injector,
@@ -62,11 +67,14 @@ export const Injector = observer(
     const [isExpanded, setExpanded] = React.useState(false);
 
     return (
-      <div>
+      <Wrapper>
         <InjectionWrapper onClick={() => setExpanded(!isExpanded)}>
           {isExpanded ? <RiArrowDownSLine /> : <RiArrowRightSLine />}
           <LinkIcon />
-          <strong>{injector.classId}</strong> {injector.propertyName} (
+          <strong style={{ color: colors.purple[400] }}>
+            {injector.classId}
+          </strong>{" "}
+          {injector.propertyName} (
           {instance && instance.injections[injector.propertyName]
             ? instance.injections[injector.propertyName].length
             : 0}
@@ -97,7 +105,7 @@ export const Injector = observer(
               : null}
           </InstanceWrapper>
         ) : null}
-      </div>
+      </Wrapper>
     );
   }
 );
