@@ -1,6 +1,6 @@
 import { observable, reaction } from "mobx";
 import * as React from "react";
-import { getVariableValue } from "../../common/design-tokens";
+import { colors, getVariableValue } from "../../common/design-tokens";
 import {
   Backend,
   BackendMessage,
@@ -206,14 +206,14 @@ ws.addEventListener("message", (event) => {
               id: "input",
               type: "top",
               properties: {
-                linkColor: getVariableValue("activityBar-activeBorder"),
+                linkColor: colors.purple[500],
               },
             },
             output: {
               id: "output",
               type: "bottom",
               properties: {
-                linkColor: getVariableValue("activityBar-activeBorder"),
+                linkColor: colors.purple[500],
               },
             },
           },

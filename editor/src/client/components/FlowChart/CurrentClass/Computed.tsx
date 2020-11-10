@@ -18,7 +18,7 @@ const ComputedWrapper = styled.div`
 
 const ComputedIcon = styled(HiCog)`
   margin-right: ${space[2]};
-  color: ${colors.foreground3};
+  color: ${colors.gray[600]};
 `;
 
 export const Computed = observer(

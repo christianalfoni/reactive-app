@@ -29,7 +29,7 @@ const ClassNavigation = styled.div`
 const EditFile = styled(MdEdit)`
   margin-left: ${space[2]};
   cursor: pointer;
-  color: ${colors.foreground2};
+  color: ${colors.gray[200]};
 `;
 
 const InstanceSelector = styled.div`

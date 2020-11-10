@@ -23,10 +23,11 @@ const Outer = styled.div`
 const Property = styled.div`
   display: flex;
   align-items: center;
-  color: ${colors.foreground1};
+  color: ${colors.gray[200]};
   margin-bottom: 4px;
   > :first-child {
-    margin-right: 4px;
+    margin-right: 8px;
+    color: ${colors.gray[600]};
   }
 `;
 
@@ -36,22 +37,22 @@ const Header = styled.div`
 `;
 
 const StringValue = styled.span`
-  color: ${colors.yellow};
+  color: ${colors.yellow[400]};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
 const CurrentState = styled.div`
-  color: ${colors.blue};
+  color: ${colors.blue[400]};
 `;
 
 const CurrentStateIcon = styled(BiCurrentLocation)`
-  color: ${colors.blue};
+  color: ${colors.blue[400]};
 `;
 
 const NumberValue = styled.span`
-  color: ${colors.blue};
+  color: ${colors.blue[400]};
 `;
 
 const NameChangeForm = styled.form`
@@ -65,7 +66,7 @@ const Name = styled.h3`
 const Type = styled.div`
   font-size: 10px;
   margin-bottom: 0.25rem;
-  color: ${colors.magenta};
+  color: ${colors.purple[400]};
 `;
 
 const EditValue = styled(RiShareBoxLine)<{ disabled?: boolean }>((props) =>
@@ -83,16 +84,16 @@ const MixinItem = styled.div`
 const NameInput = styled.input`
   outline: none;
   font-size: 16px;
-  color: ${colors.foreground1};
+  color: ${colors.gray[100]};
   background-color: transparent;
   border: 0;
-  border-bottom: 1px solid ${colors.border2};
+  border-bottom: 1px solid ${colors.purple[500]};
   font-weight: bold;
   &:active,
   &:focus {
     border: 0;
     outline: none;
-    border-bottom: 1px solid ${colors.border2};
+    border-bottom: 1px solid ${colors.purple[500]};
   }
 `;
 
@@ -211,7 +212,10 @@ export const NodeInnerDefault = observer(
               <Property key={injector.propertyName}>
                 <HiLink />{" "}
                 <span>
-                  <strong>{injector.classId}</strong> {injector.propertyName}
+                  <strong style={{ color: colors.purple[400] }}>
+                    {injector.classId}
+                  </strong>{" "}
+                  {injector.propertyName}
                 </span>
               </Property>
             );

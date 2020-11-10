@@ -9,8 +9,8 @@ import { INode } from "../../../flow-chart";
 import { colors, space } from "../../../../common/design-tokens";
 
 const InjectionItem = styled.div`
-  background-color: ${colors.background2};
-  color: ${colors.foreground2};
+  background-color: ${colors.gray[700]};
+  color: ${colors.gray[200]};
   cursor: pointer;
   padding: ${space[2]} ${space[4]};
   margin-bottom: ${space[2]};
@@ -22,7 +22,7 @@ const Injection = ({ id, onClick }: { id: number; onClick: () => void }) => {
 
 const LinkIcon = styled(HiLink)`
   margin: 0 ${space[1]};
-  color: ${colors.foreground3};
+  color: ${colors.gray[600]};
 `;
 
 const InjectionWrapper = styled.div`
@@ -35,12 +35,12 @@ const InjectionWrapper = styled.div`
 `;
 
 const InjectionSelector = styled.select`
-  background-color: ${colors.background4};
-  color: ${colors.foreground4};
+  background-color: ${colors.gray[700]};
+  color: ${colors.gray[200]};
   margin-left: auto;
-  border: 1px solid ${colors.border3};
+  border: 1px solid ${colors.gray[600]};
   > option {
-    background-color: ${colors.background4};
+    background-color: ${colors.gray[600]};
   }
 `;
 

@@ -5,7 +5,7 @@ export const Wrapper = styled.div({
   fontFamily: "'Source Code Pro', monospace",
   fontSize: 16,
   lineHeight: "24px",
-  color: colors.foreground1,
+  color: colors.gray[100],
 });
 
 export const SmallWrapper = styled.div({
@@ -16,7 +16,7 @@ export const SmallWrapper = styled.div({
 
 export const Key = styled.span({
   marginRight: 5,
-  color: colors.foreground1,
+  color: colors.gray[100],
   cursor: "pointer",
   ":hover": {
     opacity: 0.75,
@@ -38,19 +38,19 @@ export const Bracket = styled.div<{ pointer: boolean }>((props) => ({
 export const StringValue = styled.div({
   display: "flex",
   alignItems: "center",
-  color: colors.yellow,
+  color: colors.yellow[400],
 });
 
 export const OtherValue = styled.div({
   display: "flex",
   alignItems: "center",
-  color: colors.magenta,
+  color: colors.purple[400],
 });
 
 export const ClassInstanceLabel = styled.div({
   display: "flex",
   alignItems: "center",
-  color: colors.magenta,
+  color: colors.purple[400],
   cursor: "pointer",
   ":hover": {
     opacity: 0.9,
@@ -58,14 +58,14 @@ export const ClassInstanceLabel = styled.div({
 });
 
 export const InlineClass = styled.span({
-  color: colors.magenta,
+  color: colors.purple[400],
   marginRight: "0.5rem",
 });
 
 export const GenericValue = styled.div({
   display: "flex",
   alignItems: "center",
-  color: colors.blue,
+  color: colors.blue[400],
 });
 
 export const NestedChildren = styled.div({

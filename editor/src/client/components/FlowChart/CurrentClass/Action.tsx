@@ -18,7 +18,7 @@ const ActionWrapper = styled.div`
 
 const ActionIcon = styled(AiOutlineCode)`
   margin-right: ${space[2]};
-  color: ${colors.foreground3};
+  color: ${colors.gray[600]};
 `;
 
 export const Action = observer(

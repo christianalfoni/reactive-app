@@ -17,13 +17,13 @@ const PortDefaultOuter = styled.div`
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: ${colors.background3};
+  background: ${colors.gray[700]};
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
   &:hover > div {
-    background: ${colors.background3Hover};
+    background: ${colors.gray[500]};
   }
 `;
 
@@ -32,7 +32,7 @@ const PortDefaultInner = styled.div<{ active: boolean }>`
   height: 12px;
   border-radius: 50%;
   background: ${(props) =>
-    props.active ? colors.border1 : colors.background2};
+    props.active ? colors.purple[400] : colors.gray[800]};
   cursor: pointer;
 `;
 

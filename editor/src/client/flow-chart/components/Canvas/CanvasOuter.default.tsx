@@ -11,7 +11,7 @@ export interface ICanvasOuterDefaultProps {
 
 export const CanvasOuterDefault = styled.div<ICanvasOuterDefaultProps>`
   position: relative;
-  background-color: ${colors.background5};
+  background-color: ${colors.gray[900]};
   width: 100%;
   overflow: hidden;
   cursor: not-allowed;

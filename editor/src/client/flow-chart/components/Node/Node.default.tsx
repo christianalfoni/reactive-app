@@ -18,15 +18,14 @@ export interface INodeDefaultProps {
 
 export const NodeDefault = styled.div<INodeDefaultProps>`
   position: absolute;
-  background: ${colors.background4};
+  background: ${colors.gray[800]};
   border-radius: 4px;
-  color: ${colors.foreground2};
-  border: 1px solid ${colors.border1};
+  color: ${colors.gray[200]};
+  border: 1px solid ${colors.gray[700]};
   min-width: 200px;
-  border: 1px solid transparent;
   ${(props) =>
     props.isSelected &&
     css`
-      border: 1px solid ${colors.border2};
+      border: 1px solid ${colors.purple[500]};
     `}
 ` as any;

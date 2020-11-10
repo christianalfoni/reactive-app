@@ -8,15 +8,15 @@ import { CurrentClass } from "./CurrentClass";
 
 const Sidebar = styled.div`
   width: 300px;
-  background: ${colors.background1};
-  color: ${colors.foreground2};
+  background: ${colors.gray[800]};
+  color: ${colors.gray[200]};
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-left: 1px solid ${colors.border3};
+  border-left: 1px solid ${colors.gray[700]};
   > h3 {
-    color: ${colors.foreground4};
-    background: ${colors.background5};
+    color: ${colors.gray[300]};
+    background: ${colors.gray[700]};
     padding: ${space[4]};
   }
 `;
@@ -24,7 +24,7 @@ const Sidebar = styled.div`
 const NoClass = styled.div`
   padding: ${space[4]};
   text-align: center;
-  color: ${colors.placeholderForeground};
+  color: ${colors.gray[400]};
 `;
 
 export const SideBar = observer(() => {

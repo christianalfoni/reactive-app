@@ -13,8 +13,8 @@ const Outer = styled.div`
   padding: 20px 30px;
   margin: ${space[4]};
   border-radius: 4px;
-  background-color: ${colors.background2};
-  color: ${colors.foreground2};
+  background-color: ${colors.gray[600]};
+  color: ${colors.gray[200]};
   font-size: 14px;
   cursor: move;
 `;

@@ -21,7 +21,7 @@ const ObservableWrapper = styled.div`
 
 const ObservableIcon = styled(HiOutlineEye)`
   margin-right: ${space[2]};
-  color: ${colors.foreground3};
+  color: ${colors.gray[600]};
 `;
 
 export const Observable = observer(
