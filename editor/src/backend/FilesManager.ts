@@ -1,19 +1,23 @@
-import * as ts from "typescript";
 import * as fs from "fs";
 import * as path from "path";
+
+import * as prettier from "prettier";
+import * as ts from "typescript";
+
 import {
   APP_DIR,
   CONFIGURATION_DIR,
   LIBRARY_IMPORT,
 } from "../common/constants";
-import * as ast from "./ast-utils";
 import { ClassMetadata, ExtractedClass, Mixin } from "../common/types";
-import * as prettier from "prettier";
+import * as ast from "./ast-utils";
 
 let prettierConfig = {};
 
 try {
-  prettierConfig = fs.readFileSync(path.resolve(".prettierrc"));
+  prettierConfig = JSON.parse(
+    fs.readFileSync(path.resolve(".prettierrc")).toString("utf-8")
+  );
 } catch {
   // No worries, just using defaults
 }
@@ -26,8 +30,16 @@ export class FilesManager {
     [name: string]: ExtractedClass;
   } = {};
 
-  private writePrettyFile(path: string, content: string) {
-    return fs.promises.writeFile(path, new TextEncoder().encode(content));
+  private writePrettyFile(fileName: string, content: string) {
+    return fs.promises.writeFile(
+      fileName,
+      new TextEncoder().encode(
+        prettier.format(content, {
+          ...prettierConfig,
+          parser: path.extname(fileName) === ".json" ? "json" : "typescript",
+        })
+      )
+    );
   }
 
   async initialize(listeners: {

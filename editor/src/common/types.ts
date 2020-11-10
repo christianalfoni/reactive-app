@@ -62,7 +62,7 @@ export type ClassInstance = {
 
 export enum Mixin {
   Disposable = "Disposable",
-  Async = "Async",
+  Resolver = "Resolver",
   StateMachine = "StateMachine",
 }
 

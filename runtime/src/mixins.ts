@@ -57,12 +57,14 @@ export class Disposable {
   }
 }
 
-export class Async {
+export class Resolver {
   [IS_DISPOSED]: boolean;
-  async async<T, S, E>(
+  async resolve<T>(
     promise: Promise<T>,
-    successCallback: (data: T) => S,
-    errorCallback: (error: Error) => E
+    resolvers: {
+      rejected: (error: Error) => void;
+      resolved: (data: T) => void;
+    }
   ) {
     try {
       const data = await promise;
@@ -74,7 +76,7 @@ export class Async {
         return;
       }
 
-      return action(successCallback)(data);
+      return action(resolvers.resolved)(data);
     } catch (error) {
       if (this[IS_DISPOSED]) {
         console.warn(
@@ -82,11 +84,8 @@ export class Async {
         );
         return;
       }
-      if (errorCallback) {
-        return action(errorCallback)(error);
-      }
 
-      throw error;
+      return action(resolvers.rejected)(error);
     }
   }
 }
