@@ -135,7 +135,7 @@ export class Editor {
         break;
       }
       default:
-      // this.clientSocket.send(JSON.stringify(message.data));
+        this.clientSocket?.send(JSON.stringify(message));
     }
   }
   private sendEditorMessage(message: BackendMessage) {

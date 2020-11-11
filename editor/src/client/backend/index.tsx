@@ -20,6 +20,7 @@ export type ClientBackend = {
     onClassSubmit(node: INode, name: string, mixins: Mixin[]): void;
     onToggleInjectorType(node: INode, injector: Injector): void;
     onOpenClass(classId: string): void;
+    onRunAction(instanceId: number, name: string): void;
   };
   send: (message: any) => void;
 } & Backend;
@@ -148,6 +149,15 @@ const backend = observable<ClientBackend>({
         type: "class-open",
         data: {
           classId,
+        },
+      });
+    },
+    onRunAction(instanceId: number, name: string) {
+      send({
+        type: "run-action",
+        data: {
+          instanceId,
+          name,
         },
       });
     },

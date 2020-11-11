@@ -5,13 +5,10 @@
   "repository": "git@github.com:christianalfoni/reactive-app",
   "author": "Christian Alfoni <christianalfoni@gmail.com>",
   "license": "MIT",
-  "main": "lib/index.js",
-  "module": "es/index.js",
-  "types": "lib/index.d.ts",
+  "main": "es/index.js",
+  "types": "es/index.d.ts",
   "scripts": {
-    "build": "npm run build:lib & npm run build:es",
-    "build:lib": "tsc -p ./runtime --outDir lib --module commonjs",
-    "build:es": "tsc -p ./runtime --outDir es --module es2015",
+    "build": "tsc -p ./runtime --outDir es --module es2015",
     "editor:watch": "tsc -w -p ./editor",
     "editor:dev": "parcel editor/index.html --port 5050"
   },

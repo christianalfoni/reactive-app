@@ -35,16 +35,27 @@ const RunWrapper = styled.div`
 export const Action = observer(
   ({
     action,
-    instance,
+    instanceId,
+    runAction,
   }: {
     action: TAction;
-    instance: ClassInstance | null;
+    instanceId: number | null;
+    runAction: (instanceId: number, name: string) => void;
   }) => {
     return (
       <ActionWrapper>
         <ActionIcon />
         {action.name}
-        <RunWrapper>run</RunWrapper>
+        <RunWrapper
+          onClick={() => {
+            if (instanceId === null) {
+              return;
+            }
+            runAction(instanceId, action.name);
+          }}
+        >
+          run
+        </RunWrapper>
       </ActionWrapper>
     );
   }

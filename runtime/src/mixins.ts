@@ -111,6 +111,7 @@ export class StateMachine<
 
   readonly transitions: StateMachineTransitions<S> = null as any;
 
+  @action
   transition(newState: S): S | void {
     if (!this.transitions) {
       throw new Error(
@@ -119,6 +120,9 @@ export class StateMachine<
     }
 
     if (!(this.transitions as any)[this.state.current][newState.current]) {
+      console.warn(
+        `Invalid transition from "${this.state.current}" to "${newState.current}"`
+      );
       return;
     }
 
@@ -129,6 +133,9 @@ export class StateMachine<
         this.state
       )
     ) {
+      console.warn(
+        `Ignoring transition from "${this.state.current}" to "${newState.current}"`
+      );
       return;
     }
 

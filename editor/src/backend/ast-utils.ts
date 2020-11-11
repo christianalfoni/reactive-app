@@ -1,4 +1,5 @@
 import * as ts from "typescript";
+
 import { Injector, Mixin, Observable } from "../common/types";
 
 const LINE_BREAK = "REACTIVE_LINE_BREAK";
@@ -333,11 +334,11 @@ export function addInjectionProperty(
         )
       ),
     ],
-    undefined,
+    [ts.factory.createModifier(ts.SyntaxKind.DeclareKeyword)],
     ts.factory.createIdentifier(
       injectionType === "inject" ? name.toLowerCase() : `create${name}`
     ),
-    ts.factory.createToken(ts.SyntaxKind.ExclamationToken),
+    undefined,
     injectionType === "inject"
       ? ts.factory.createTypeReferenceNode(
           ts.factory.createIdentifier(name),

@@ -1,6 +1,7 @@
 import { makeObservable } from "mobx";
-import { IDevtool } from "./devtool";
+
 import { INSTANCE_ID } from "./common";
+import { IDevtool } from "./devtool";
 import { Devtool } from "./devtool";
 
 export * from "mobx";
@@ -133,10 +134,18 @@ export function inject(classKey: string): any {
           instanceId: this[INSTANCE_ID],
           classId: this.constructor.name,
         });
+
+        // We do not need to dynamically grab it again
+        Object.defineProperty(target, key, {
+          value: instance,
+          configurable: false,
+          enumerable: false,
+        });
+
         return instance;
       },
       enumerable: false,
-      configurable: false,
+      configurable: true,
     };
   };
 }
@@ -151,7 +160,7 @@ export function injectFactory(classKey: string): any {
 
         const factory = this[IOC_CONTAINER].getFactory(classKey);
 
-        return (...args: any[]) => {
+        const debugFactory = (...args: any[]) => {
           const instance = factory(...args);
           this[IOC_CONTAINER]._devtool?.sendInjection({
             propertyName: key,
@@ -162,9 +171,18 @@ export function injectFactory(classKey: string): any {
           });
           return instance;
         };
+
+        // We do not need to dynamically grab it again
+        Object.defineProperty(target, key, {
+          value: debugFactory,
+          configurable: false,
+          enumerable: false,
+        });
+
+        return debugFactory;
       },
       enumerable: false,
-      configurable: false,
+      configurable: true,
     };
   };
 }

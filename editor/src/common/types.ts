@@ -122,6 +122,13 @@ export type ClientMessage =
       data: {
         classId: string;
       };
+    }
+  | {
+      type: "run-action";
+      data: {
+        instanceId: number;
+        name: string;
+      };
     };
 
 export type ClassMetadata = { x: number; y: number };

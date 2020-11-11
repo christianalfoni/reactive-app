@@ -1,4 +1,5 @@
 import { spy, toJS } from "mobx";
+
 import { INSTANCE_ID } from "./common";
 
 export type TSpyChange = Parameters<Parameters<typeof spy>[0]>[0];
@@ -53,11 +54,22 @@ export type TDebugMessage = (
   };
 };
 
+export type TBackendMessage = {
+  type: "run-action";
+  data: {
+    instanceId: number;
+    name: string;
+  };
+};
+
 export class Devtool implements IDevtool {
   private ws: WebSocket;
   private messageBuffer: TDebugMessage[] = [];
   private _mobxIdToInstanceId: {
     [mobxId: string]: number;
+  } = {};
+  private _instanceIdToInstance: {
+    [instanceId: number]: any;
   } = {};
   private _onSpyInstantiation: ((change: TSpyChange) => void) | undefined;
   private onSpy(change: Parameters<Parameters<typeof spy>[0]>[0]) {
@@ -177,8 +189,14 @@ export class Devtool implements IDevtool {
     this.ws = new WebSocket(`ws://${host}`);
 
     this.ws.addEventListener("message", (event) => {
-      const message = JSON.parse(event.data);
-      console.log(event.data);
+      const message: TBackendMessage = JSON.parse(event.data);
+      switch (message.type) {
+        case "run-action":
+          this._instanceIdToInstance[message.data.instanceId][
+            message.data.name
+          ]();
+          break;
+      }
     });
 
     this.ws.addEventListener("open", () => {
@@ -209,6 +227,7 @@ export class Devtool implements IDevtool {
         change.debugObjectName.match(/^[^.]*$/) &&
         !this._mobxIdToInstanceId[change.debugObjectName]
       ) {
+        this._instanceIdToInstance[instanceId] = change.object;
         this._mobxIdToInstanceId[change.debugObjectName] = instanceId;
       }
     };

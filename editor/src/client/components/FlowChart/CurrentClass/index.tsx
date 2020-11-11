@@ -1,14 +1,15 @@
 import { observer } from "mobx-react";
 import * as React from "react";
 import { MdEdit, MdKeyboardArrowRight } from "react-icons/md";
-import styled from "styled-components";
-import { useBackend } from "../../../backend";
 import { MdKeyboardArrowLeft } from "react-icons/md";
+import styled from "styled-components";
+
 import { colors, space } from "../../../../common/design-tokens";
+import { useBackend } from "../../../backend";
+import { Action } from "./Action";
+import { Computed } from "./Computed";
 import { Injector } from "./Injector";
 import { Observable } from "./Observable";
-import { Computed } from "./Computed";
-import { Action } from "./Action";
 
 const Wrapper = styled.div`
   padding: ${space[2]} ${space[4]};
@@ -150,7 +151,12 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
       </div>
       <div>
         {node.properties.actions.map((action) => (
-          <Action key={action.name} action={action} instance={instance} />
+          <Action
+            key={action.name}
+            action={action}
+            runAction={backend.actions.onRunAction}
+            instanceId={node.properties.currentInstanceId}
+          />
         ))}
       </div>
     </Wrapper>
