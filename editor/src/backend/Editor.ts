@@ -141,10 +141,10 @@ export class Editor {
   private sendEditorMessage(message: BackendMessage) {
     this.editorSocket?.send(JSON.stringify(message));
   }
-  private onClassChange(name: string, e: ExtractedClass) {
+  private onClassChange(name: string, extractedClass: ExtractedClass) {
     const clas = {
       ...this.filesManager.metadata[name],
-      ...e,
+      ...extractedClass,
     };
 
     this.sendEditorMessage({
@@ -152,7 +152,17 @@ export class Editor {
       data: clas,
     });
   }
-  private onClassCreate(name: string) {}
+  private onClassCreate(name: string, extractedClass: ExtractedClass) {
+    const clas = {
+      ...this.filesManager.metadata[name],
+      ...extractedClass,
+    };
+
+    this.sendEditorMessage({
+      type: "class-update",
+      data: clas,
+    });
+  }
   private onClassDelete(name: string) {}
   connect() {
     return new Promise<number>((resolve, reject) => {

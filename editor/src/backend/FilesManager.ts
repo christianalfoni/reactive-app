@@ -44,7 +44,7 @@ export class FilesManager {
 
   async initialize(listeners: {
     onClassChange: (name: string, e: ExtractedClass) => void;
-    onClassCreate: (name: string) => void;
+    onClassCreate: (name: string, e: ExtractedClass) => void;
     onClassDelete: (name: string) => void;
   }) {
     await this.ensureConfigurationDir();
@@ -52,6 +52,16 @@ export class FilesManager {
     await this.ensureContainerEntry();
     this.classes = await this.getClasses();
     fs.watch(path.resolve(APP_DIR), async (eventType, fileName) => {
+      if (
+        fileName === "index.ts" ||
+        fileName.endsWith(".test.ts") ||
+        fileName.endsWith(".spec.ts")
+      ) {
+        return;
+      }
+
+      console.log(eventType, fileName);
+
       if (eventType === "change") {
         const updatedClass = await this.getClass(fileName);
         this.classes[updatedClass.classId] = updatedClass;
@@ -59,9 +69,18 @@ export class FilesManager {
           this.getClassIdFromFileName(fileName),
           updatedClass
         );
-      } else if (eventType === "rename") {
-        // listeners.onClassCreate(this.getClassIdFromUri(uri))
-        // 					listeners.onClassDelete(this.getClassIdFromUri(uri))
+      } else if (
+        eventType === "rename" &&
+        fs.existsSync(path.resolve(fileName))
+      ) {
+        const createdClass = await this.getClass(fileName);
+        this.classes[createdClass.classId] = createdClass;
+        listeners.onClassCreate(
+          this.getClassIdFromFileName(fileName),
+          createdClass
+        );
+      } else {
+        listeners.onClassDelete(this.getClassIdFromFileName(fileName));
       }
     });
   }
@@ -231,6 +250,7 @@ export class ${classId} {
       FOO: true
     }
 	}
+
 	@observable
 	state: TState = {
 		current: "FOO"
