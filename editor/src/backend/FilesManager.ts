@@ -143,7 +143,10 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     const appDir = path.resolve(APP_DIR)!;
     try {
       const files = (await fs.promises.readdir(appDir)).filter(
-        (file) => file !== "index.ts"
+        (file) =>
+          file !== "index.ts" &&
+          !file.endsWith(".test.ts") &&
+          !file.endsWith(".spec.ts")
       );
 
       const contents = await Promise.all(

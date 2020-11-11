@@ -59,34 +59,34 @@ export class Disposable {
 
 export class Resolver {
   [IS_DISPOSED]: boolean;
-  async resolve<T>(
+  resolve<T>(
     promise: Promise<T>,
     resolvers: {
       rejected: (error: Error) => void;
       resolved: (data: T) => void;
     }
   ) {
-    try {
-      const data = await promise;
+    return promise
+      .then((data) => {
+        if (this[IS_DISPOSED]) {
+          console.warn(
+            `${this.constructor.name} resolved async, but is disposed`
+          );
+          return;
+        }
 
-      if (this[IS_DISPOSED]) {
-        console.warn(
-          `${this.constructor.name} resolved async, but is disposed`
-        );
-        return;
-      }
+        return action(resolvers.resolved)(data);
+      })
+      .catch((error) => {
+        if (this[IS_DISPOSED]) {
+          console.warn(
+            `${this.constructor.name} rejected async, but is disposed`
+          );
+          return;
+        }
 
-      return action(resolvers.resolved)(data);
-    } catch (error) {
-      if (this[IS_DISPOSED]) {
-        console.warn(
-          `${this.constructor.name} rejected async, but is disposed`
-        );
-        return;
-      }
-
-      return action(resolvers.rejected)(error);
-    }
+        return action(resolvers.rejected)(error);
+      });
   }
 }
 
