@@ -82,6 +82,10 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
     // We will create a new one
     delete chart.links[data.linkId];
 
+    if (fromId === toId) {
+      return;
+    }
+
     send({
       type: "inject",
       data: {
