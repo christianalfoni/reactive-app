@@ -71,4 +71,9 @@ export class Initializer {
 
     return null;
   }
+  dispose() {
+    const packageJsonPath = path.resolve("package.json");
+
+    fs.unwatchFile(packageJsonPath, this.packageJsonWatcher);
+  }
 }

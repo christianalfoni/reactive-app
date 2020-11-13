@@ -162,6 +162,15 @@ export const NodeWrapper = ({
 
   const children = (
     <div>
+      <ResizeObserver
+        onResize={(rect) => {
+          const newSize = { width: rect.width, height: rect.height };
+          onNodeSizeChange({
+            nodeId: node.id,
+            size: newSize,
+          });
+        }}
+      />
       <NodeInner node={node} config={config} />
       <Ports node={node} config={config} onResize={setPortsSize}>
         {Object.keys(node.ports).map((portId) => (

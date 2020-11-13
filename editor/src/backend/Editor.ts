@@ -15,8 +15,8 @@ import { FilesManager } from "./FilesManager";
 import { Initializer } from "./Initializer";
 
 export class Editor {
-  private initializer = new Initializer();
-  private filesManager = new FilesManager();
+  private declare initializer: Initializer;
+  private declare filesManager: FilesManager;
   private editorSocket: WebSocket | undefined;
   private clientSocket: WebSocket | undefined;
   constructor() {}
@@ -43,6 +43,10 @@ export class Editor {
     }
   }
   private onEditorConnection(ws: WebSocket) {
+    if (this.editorSocket) {
+      this.editorSocket.terminate();
+    }
+
     this.editorSocket = ws;
     this.editorSocket.on("message", this.onEditorMessage.bind(this));
   }
@@ -76,6 +80,11 @@ export class Editor {
 
     switch (message.type) {
       case "init":
+        if (this.initializer) {
+          this.initializer.dispose();
+        }
+
+        this.initializer = new Initializer();
         this.initializer.initialize(async (data) => {
           this.sendEditorMessage({
             type: "init",
@@ -83,6 +92,11 @@ export class Editor {
           });
 
           if (data.status === "ready") {
+            if (this.filesManager) {
+              this.filesManager.dispose();
+            }
+
+            this.filesManager = new FilesManager();
             await this.filesManager.initialize({
               onClassChange: this.onClassChange.bind(this),
               onClassCreate: this.onClassCreate.bind(this),

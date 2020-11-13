@@ -23,6 +23,7 @@ try {
 }
 
 export class FilesManager {
+  private filesWatcher: fs.FSWatcher | undefined;
   metadata: {
     [name: string]: ClassMetadata;
   } = {};
@@ -42,48 +43,6 @@ export class FilesManager {
     );
   }
 
-  async initialize(listeners: {
-    onClassChange: (name: string, e: ExtractedClass) => void;
-    onClassCreate: (name: string, e: ExtractedClass) => void;
-    onClassDelete: (name: string) => void;
-  }) {
-    await this.ensureConfigurationDir();
-    await this.ensureAppDir();
-    await this.ensureContainerEntry();
-    this.classes = await this.getClasses();
-    fs.watch(path.resolve(APP_DIR), async (eventType, fileName) => {
-      if (
-        fileName === "index.ts" ||
-        fileName.endsWith(".test.ts") ||
-        fileName.endsWith(".spec.ts")
-      ) {
-        return;
-      }
-
-      console.log(eventType, fileName);
-
-      if (eventType === "change") {
-        const updatedClass = await this.getClass(fileName);
-        this.classes[updatedClass.classId] = updatedClass;
-        listeners.onClassChange(
-          this.getClassIdFromFileName(fileName),
-          updatedClass
-        );
-      } else if (
-        eventType === "rename" &&
-        fs.existsSync(path.resolve(fileName))
-      ) {
-        const createdClass = await this.getClass(fileName);
-        this.classes[createdClass.classId] = createdClass;
-        listeners.onClassCreate(
-          this.getClassIdFromFileName(fileName),
-          createdClass
-        );
-      } else {
-        listeners.onClassDelete(this.getClassIdFromFileName(fileName));
-      }
-    });
-  }
   private async ensureAppDir() {
     try {
       await fs.promises.mkdir(path.resolve(APP_DIR));
@@ -91,6 +50,7 @@ export class FilesManager {
       // Already exists
     }
   }
+
   private async ensureConfigurationDir() {
     const configDir = path.resolve(CONFIGURATION_DIR);
 
@@ -109,6 +69,7 @@ export class FilesManager {
       // No file, we will write it later
     }
   }
+
   private async ensureContainerEntry() {
     const entryFile = path.resolve(APP_DIR, "index.ts");
     try {
@@ -123,6 +84,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
       );
     }
   }
+
   private extractClass(classId: string, content: Uint8Array) {
     const node = ts.createSourceFile(
       "temp.ts",
@@ -146,18 +108,18 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
       actions,
     };
   }
+
   private async getClass(fileName: string): Promise<ExtractedClass> {
     const content = await fs.promises.readFile(path.resolve(APP_DIR, fileName));
     const classId = this.getClassIdFromFileName(fileName);
 
     return this.extractClass(classId, content);
   }
+
   private getClassIdFromFileName(fileName: string) {
     return path.basename(fileName, ".ts");
   }
-  getMetadata() {
-    return this.metadata;
-  }
+
   private async getClasses() {
     const appDir = path.resolve(APP_DIR)!;
     try {
@@ -185,6 +147,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
       return {};
     }
   }
+
   /*
     This is where we map files to nodes and their metadata. Things
     like position and the ID of the node.
@@ -206,6 +169,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     };
     await this.writePrettyFile(file, JSON.stringify(this.metadata, null, 2));
   }
+
   /*
     This method writes the initial file content
   */
@@ -273,6 +237,7 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
 
     await this.writeClassToEntryFile(classId);
   }
+
   private async writeClassToEntryFile(classId: string) {
     const file = path.resolve(APP_DIR, "index.ts")!;
     const code = await fs.promises.readFile(file);
@@ -308,6 +273,7 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
     });
     await this.writePrettyFile(file, newCode);
   }
+
   /*
     This method adds injections. The type of injection will be part of
     the payload, either "singleton" or "factory"
@@ -348,6 +314,7 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
 
     await this.writePrettyFile(file, newCode);
   }
+
   async replaceInjection(
     name: string,
     fromName: string,
@@ -393,6 +360,7 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
 
     await this.writePrettyFile(file, newCode);
   }
+
   async removeInjection(fromClassId: string, toClassId: string) {
     const file = path.resolve(APP_DIR, toClassId + ".ts")!;
     const code = await fs.promises.readFile(file);
@@ -407,5 +375,57 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
     });
 
     await this.writePrettyFile(file, newCode);
+  }
+
+  async initialize(listeners: {
+    onClassChange: (name: string, e: ExtractedClass) => void;
+    onClassCreate: (name: string, e: ExtractedClass) => void;
+    onClassDelete: (name: string) => void;
+  }) {
+    await this.ensureConfigurationDir();
+    await this.ensureAppDir();
+    await this.ensureContainerEntry();
+    this.classes = await this.getClasses();
+    this.filesWatcher = fs.watch(
+      path.resolve(APP_DIR),
+      async (eventType, fileName) => {
+        if (
+          fileName === "index.ts" ||
+          fileName.endsWith(".test.ts") ||
+          fileName.endsWith(".spec.ts")
+        ) {
+          return;
+        }
+
+        if (eventType === "change") {
+          const updatedClass = await this.getClass(fileName);
+          this.classes[updatedClass.classId] = updatedClass;
+          listeners.onClassChange(
+            this.getClassIdFromFileName(fileName),
+            updatedClass
+          );
+        } else if (
+          eventType === "rename" &&
+          fs.existsSync(path.resolve(fileName))
+        ) {
+          const createdClass = await this.getClass(fileName);
+          this.classes[createdClass.classId] = createdClass;
+          listeners.onClassCreate(
+            this.getClassIdFromFileName(fileName),
+            createdClass
+          );
+        } else {
+          listeners.onClassDelete(this.getClassIdFromFileName(fileName));
+        }
+      }
+    );
+  }
+
+  getMetadata() {
+    return this.metadata;
+  }
+
+  dispose() {
+    this.filesWatcher?.close();
   }
 }
