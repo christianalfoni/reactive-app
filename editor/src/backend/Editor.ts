@@ -130,6 +130,13 @@ export class Editor {
         );
         break;
       }
+      case "inject-remove": {
+        this.filesManager.removeInjection(
+          message.data.fromClassId,
+          message.data.toClassId
+        );
+        break;
+      }
       case "class-open": {
         spawn("code", [path.join(APP_DIR, message.data.classId + ".ts")]);
         break;

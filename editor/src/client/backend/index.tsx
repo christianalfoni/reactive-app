@@ -79,6 +79,9 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
       data.fromPortId === "output" ? data.fromNodeId : data.toNodeId;
     const toId = data.fromPortId === "output" ? data.toNodeId : data.fromNodeId;
 
+    // We will create a new one
+    delete chart.links[data.linkId];
+
     send({
       type: "inject",
       data: {
@@ -87,6 +90,19 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
       },
     });
   }) as typeof actions.onLinkComplete,
+  onLinkClick: (({ linkId }) => {
+    const link = chart.links[linkId];
+
+    delete chart.links[linkId];
+
+    send({
+      type: "inject-remove",
+      data: {
+        fromClassId: link.from.nodeId,
+        toClassId: link.to.nodeId!,
+      },
+    });
+  }) as typeof actions.onLinkClick,
 };
 
 const backend = observable<ClientBackend>({

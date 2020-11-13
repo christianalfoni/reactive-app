@@ -118,6 +118,13 @@ export type ClientMessage =
       };
     }
   | {
+      type: "inject-remove";
+      data: {
+        fromClassId: string;
+        toClassId: string;
+      };
+    }
+  | {
       type: "class-open";
       data: {
         classId: string;

@@ -175,12 +175,6 @@ export const onLinkMouseLeave: IStateCallback<IOnLinkMouseLeave> = ({
 export const onLinkClick: IStateCallback<IOnLinkClick> = ({ linkId }) => (
   chart: IChart
 ) => {
-  if (chart.selected.id !== linkId || chart.selected.type !== "link") {
-    chart.selected = {
-      type: "link",
-      id: linkId,
-    };
-  }
   return chart;
 };
 

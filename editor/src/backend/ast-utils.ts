@@ -206,6 +206,42 @@ export function getActions(node: ts.ClassDeclaration) {
   }, []);
 }
 
+export function removeImportDeclaration(node: ts.SourceFile, classId: string) {
+  const existingImportDeclaration = findImportDeclaration(node, `./${classId}`);
+
+  // @ts-ignore
+  node.statements.splice(node.statements.indexOf(existingImportDeclaration), 1);
+
+  return node;
+}
+
+export function findImportDeclaration(
+  node: ts.SourceFile,
+  source: string,
+  isType?: boolean
+) {
+  return node.statements.find((statement) => {
+    return (
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === source &&
+      statement.importClause &&
+      (isType === undefined
+        ? true
+        : statement.importClause.isTypeOnly === isType)
+    );
+  }) as ts.ImportDeclaration | undefined;
+}
+
+export function hasNameInImportDeclaration(
+  node: ts.ImportDeclaration,
+  name: string
+) {
+  return (node.importClause!.namedBindings! as ts.NamedImports).elements.some(
+    (element) => element.name.text === name
+  );
+}
+
 export function addImportDeclaration(
   node: ts.SourceFile,
   {
@@ -218,23 +254,12 @@ export function addImportDeclaration(
     isType: boolean;
   }
 ) {
-  const existingImportDeclaration = node.statements.find((statement) => {
-    return (
-      ts.isImportDeclaration(statement) &&
-      ts.isStringLiteral(statement.moduleSpecifier) &&
-      statement.moduleSpecifier.text === source &&
-      statement.importClause &&
-      statement.importClause.isTypeOnly === isType
-    );
-  }) as ts.ImportDeclaration | undefined;
+  const existingImportDeclaration = findImportDeclaration(node, source, isType);
 
-  const hasNamedImport = (node: ts.ImportDeclaration): boolean => {
-    return (node.importClause!.namedBindings! as ts.NamedImports).elements.some(
-      (element) => element.name.text === name
-    );
-  };
-
-  if (existingImportDeclaration && !hasNamedImport(existingImportDeclaration)) {
+  if (
+    existingImportDeclaration &&
+    !hasNameInImportDeclaration(existingImportDeclaration, name)
+  ) {
     const createUpdatedImportClause = (
       existingImportClause: ts.ImportClause
     ): ts.ImportClause => {
@@ -367,5 +392,43 @@ export function addInjectionProperty(
           return member;
         })
       : [newProperty, ...node.members]
+  );
+}
+
+export function removeInjectionProperty(
+  node: ts.ClassDeclaration,
+  injectedClassId: string
+) {
+  const isPropertyToRemove = (member: ts.ClassElement) => {
+    if (!member.decorators) {
+      return null;
+    }
+
+    return member.decorators.find((decorator) => {
+      const injectionArgument = ts.isCallExpression(decorator.expression)
+        ? decorator.expression.arguments[0]
+        : ts.factory.createEmptyStatement();
+      if (
+        ts.isStringLiteral(injectionArgument) &&
+        injectionArgument.text === injectedClassId
+      ) {
+        return decorator;
+      }
+    });
+  };
+
+  const propertyToRemove = node.members.find((member) => {
+    if (member.decorators && isPropertyToRemove(member)) {
+      return member;
+    }
+  });
+
+  return ts.factory.createClassDeclaration(
+    node.decorators,
+    node.modifiers,
+    node.name,
+    node.typeParameters,
+    node.heritageClauses,
+    node.members.filter((member) => member !== propertyToRemove)
   );
 }

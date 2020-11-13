@@ -393,4 +393,19 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
 
     await this.writePrettyFile(file, newCode);
   }
+  async removeInjection(fromClassId: string, toClassId: string) {
+    const file = path.resolve(APP_DIR, toClassId + ".ts")!;
+    const code = await fs.promises.readFile(file);
+    const newCode = ast.transformTypescript(code, (node) => {
+      if (ts.isSourceFile(node)) {
+        return ast.removeImportDeclaration(node, fromClassId);
+      }
+
+      if (ast.isClassNode(node, toClassId)) {
+        return ast.removeInjectionProperty(node, fromClassId);
+      }
+    });
+
+    await this.writePrettyFile(file, newCode);
+  }
 }
