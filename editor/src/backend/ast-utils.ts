@@ -1,60 +1,14 @@
+import {
+  CallExpression,
+  SourceFile,
+  ArrayLiteralExpression,
+  ExpressionStatement,
+} from "ts-morph";
 import * as ts from "typescript";
+import { MIXINS_IMPORT } from "../common/constants";
 
 import { Injector, Mixin, Observable } from "../common/types";
-
-const LINE_BREAK = "REACTIVE_LINE_BREAK";
-const NEW_LINE_BREAK = "NEW_REACTIVE_LINE_BREAK";
-
-function addLineBreak(node: ts.Node) {
-  ts.setSyntheticTrailingComments(node, [
-    {
-      pos: -1,
-      end: -1,
-      text: ` ${NEW_LINE_BREAK}`,
-      kind: ts.SyntaxKind.SingleLineCommentTrivia,
-    },
-  ]);
-}
-
-export function transformTypescript(
-  code: Uint8Array,
-  cb: (node: ts.Node) => ts.Node | void
-) {
-  const sourceNode = ts.createSourceFile(
-    "temp.ts",
-    new TextDecoder("utf-8")
-      .decode(code)
-      .replace(/^\s*\n/gm, `// ${LINE_BREAK}\n`),
-    ts.ScriptTarget.Latest
-  );
-
-  const transformer = <T extends ts.SourceFile>(
-    context: ts.TransformationContext
-  ) => (rootNode: T) => {
-    function visit(node: ts.Node): ts.Node {
-      const visitedNode = cb(node) || node;
-
-      return ts.visitEachChild(visitedNode, visit, context);
-    }
-    return ts.visitNode(rootNode, visit);
-  };
-
-  const result: ts.TransformationResult<ts.SourceFile> = ts.transform(
-    sourceNode,
-    [transformer]
-  );
-
-  const transformedSourceFile = result.transformed[0];
-
-  const printer = ts.createPrinter({
-    newLine: ts.NewLineKind.LineFeed,
-  });
-
-  return printer
-    .printFile(transformedSourceFile)
-    .replace(new RegExp(`// ${NEW_LINE_BREAK}`, "gm"), "\n")
-    .replace(new RegExp(`// ${LINE_BREAK}`, "gm"), "");
-}
+import { writeLineBreak } from "./TsMorphFs";
 
 export function getClassNode(
   node: ts.SourceFile,
@@ -78,18 +32,6 @@ export function getClassNode(
   }
 
   return classNode;
-}
-
-export function isClassNode(
-  node: ts.Node,
-  name: string
-): node is ts.ClassDeclaration {
-  return Boolean(
-    ts.isClassDeclaration(node) &&
-      node.name &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === name
-  );
 }
 
 export function getClassMixins(node: ts.SourceFile, classId: string): Mixin[] {
@@ -206,229 +148,159 @@ export function getActions(node: ts.ClassDeclaration) {
   }, []);
 }
 
-export function removeImportDeclaration(node: ts.SourceFile, classId: string) {
-  const existingImportDeclaration = findImportDeclaration(node, `./${classId}`);
-
-  // @ts-ignore
-  node.statements.splice(node.statements.indexOf(existingImportDeclaration), 1);
-
-  return node;
-}
-
-export function findImportDeclaration(
-  node: ts.SourceFile,
-  source: string,
-  isType?: boolean
-) {
-  return node.statements.find((statement) => {
-    return (
-      ts.isImportDeclaration(statement) &&
-      ts.isStringLiteral(statement.moduleSpecifier) &&
-      statement.moduleSpecifier.text === source &&
-      statement.importClause &&
-      (isType === undefined
-        ? true
-        : statement.importClause.isTypeOnly === isType)
-    );
-  }) as ts.ImportDeclaration | undefined;
-}
-
-export function hasNameInImportDeclaration(
-  node: ts.ImportDeclaration,
-  name: string
-) {
-  return (node.importClause!.namedBindings! as ts.NamedImports).elements.some(
-    (element) => element.name.text === name
-  );
-}
-
 export function addImportDeclaration(
-  node: ts.SourceFile,
-  {
-    name,
-    source,
-    isType = false,
-  }: {
-    name: string;
-    source: string;
-    isType: boolean;
-  }
+  sourceFile: SourceFile,
+  moduleSpecifier: string,
+  namedImport: string,
+  isTypeOnly = false
 ) {
-  const existingImportDeclaration = findImportDeclaration(node, source, isType);
+  const existingImportDeclaration = sourceFile.getImportDeclaration(
+    (importDeclaration) => {
+      return (
+        importDeclaration.getModuleSpecifier().getLiteralText() ===
+        moduleSpecifier
+      );
+    }
+  );
 
   if (
     existingImportDeclaration &&
-    !hasNameInImportDeclaration(existingImportDeclaration, name)
+    !existingImportDeclaration
+      .getNamedImports()
+      .find((namedImportItem) => namedImportItem.getText() === namedImport)
   ) {
-    const createUpdatedImportClause = (
-      existingImportClause: ts.ImportClause
-    ): ts.ImportClause => {
-      const elements = (existingImportClause.namedBindings! as ts.NamedImports)
-        .elements;
-
-      return ts.factory.createImportClause(
-        isType,
-        undefined,
-        ts.factory.createNamedImports([
-          ...elements,
-          ts.factory.createImportSpecifier(
-            undefined,
-            ts.factory.createIdentifier(name)
-          ),
-        ])
-      );
-    };
-
-    const createUpdatedImportDeclaration = () => {
-      return ts.factory.createImportDeclaration(
-        existingImportDeclaration.decorators,
-        existingImportDeclaration.modifiers,
-        createUpdatedImportClause(existingImportDeclaration.importClause!),
-        existingImportDeclaration.moduleSpecifier
-      );
-    };
-    const transformStatements = () => {
-      return node.statements.map((statement) => {
-        if (statement === existingImportDeclaration) {
-          return createUpdatedImportDeclaration();
-        }
-
-        return statement;
-      });
-    };
-
-    // When we return a new source file we loose the comments
-    // @ts-ignore
-    node.statements = transformStatements();
-
-    return node;
+    existingImportDeclaration.addNamedImport(namedImport);
   } else if (!existingImportDeclaration) {
-    const importDeclarationCount = node.statements.filter((statement) =>
-      ts.isImportDeclaration(statement)
-    ).length;
+    sourceFile.addImportDeclaration({
+      moduleSpecifier,
+      namedImports: [namedImport],
+      isTypeOnly,
+    });
+  }
+}
 
-    // When we return a new source file we loose the comments
-    // @ts-ignore
-    node.statements.splice(
-      importDeclarationCount,
-      0,
-      ts.factory.createImportDeclaration(
-        undefined,
-        undefined,
-        ts.factory.createImportClause(
-          isType,
-          undefined,
-          ts.factory.createNamedImports([
-            ts.factory.createImportSpecifier(
-              undefined,
-              ts.factory.createIdentifier(name)
-            ),
-          ])
-        ),
-        ts.factory.createStringLiteral(source)
+export function toggleImportDeclaration(
+  sourceFile: SourceFile,
+  moduleSpecifier: string,
+  namedImport: string
+) {
+  const hasExistingDeclaration = sourceFile.getImportDeclaration(
+    (importDeclaration) =>
+      Boolean(
+        importDeclaration.getModuleSpecifier().getLiteralText() ===
+          moduleSpecifier &&
+          importDeclaration
+            .getNamedImports()
+            .find((namedImportItem) =>
+              namedImportItem.getName().match(namedImport)
+            )
       )
-    );
+  );
 
-    return node;
+  if (hasExistingDeclaration) {
+    removeImportDeclaration(sourceFile, moduleSpecifier, namedImport);
+  } else {
+    addImportDeclaration(sourceFile, moduleSpecifier, namedImport);
+  }
+}
+
+export function removeImportDeclaration(
+  sourceFile: SourceFile,
+  moduleSpecifier: string,
+  namedImport?: string
+) {
+  const existingImportDeclaration = sourceFile.getImportDeclaration(
+    (importDeclaration) =>
+      importDeclaration.getModuleSpecifier().getLiteralText() ===
+      moduleSpecifier
+  )!;
+
+  if (!namedImport) {
+    existingImportDeclaration.remove();
+    return;
   }
 
-  return node;
+  if (existingImportDeclaration.getNamedImports().length > 1) {
+    existingImportDeclaration
+      .getNamedImports()
+      .find(
+        (namedImportItem) =>
+          namedImportItem.getName().toString() === namedImport
+      )
+      ?.remove();
+  } else {
+    existingImportDeclaration.remove();
+  }
 }
 
-export function addInjectionProperty(
-  node: ts.ClassDeclaration,
-  name: string,
-  propertyName: string,
-  injectionType: "inject" | "injectFactory"
-): ts.ClassDeclaration {
-  const existingProperty = node.members.find((member) => {
-    return (
-      ts.isPropertyDeclaration(member) &&
-      ts.isIdentifier(member.name) &&
-      member.name.text === propertyName
-    );
-  }) as ts.PropertyDeclaration | undefined;
-
-  const newProperty = ts.factory.createPropertyDeclaration(
-    [
-      ts.factory.createDecorator(
-        ts.factory.createCallExpression(
-          ts.factory.createIdentifier(injectionType),
-          undefined,
-          [ts.factory.createStringLiteral(name)]
-        )
-      ),
-    ],
-    [ts.factory.createModifier(ts.SyntaxKind.DeclareKeyword)],
-    ts.factory.createIdentifier(
-      injectionType === "inject" ? name.toLowerCase() : `create${name}`
-    ),
-    undefined,
-    injectionType === "inject"
-      ? ts.factory.createTypeReferenceNode(
-          ts.factory.createIdentifier(name),
-          undefined
-        )
-      : ts.factory.createTypeReferenceNode("IFactory", [
-          ts.factory.createTypeQueryNode(ts.factory.createIdentifier(name)),
-        ]),
-    undefined
-  );
-
-  addLineBreak(newProperty);
-
-  return ts.factory.createClassDeclaration(
-    node.decorators,
-    node.modifiers,
-    node.name,
-    node.typeParameters,
-    node.heritageClauses,
-    existingProperty
-      ? node.members.map((member) => {
-          if (member === existingProperty) {
-            return newProperty;
-          }
-
-          return member;
-        })
-      : [newProperty, ...node.members]
-  );
-}
-
-export function removeInjectionProperty(
-  node: ts.ClassDeclaration,
-  injectedClassId: string
+export function toggleMixinInterface(
+  sourceFile: SourceFile,
+  interfaceName: string,
+  type: string
 ) {
-  const isPropertyToRemove = (member: ts.ClassElement) => {
-    if (!member.decorators) {
-      return null;
-    }
+  const mixinInterface = sourceFile.getInterface(interfaceName);
 
-    return member.decorators.find((decorator) => {
-      const injectionArgument = ts.isCallExpression(decorator.expression)
-        ? decorator.expression.arguments[0]
-        : ts.factory.createEmptyStatement();
-      if (
-        ts.isStringLiteral(injectionArgument) &&
-        injectionArgument.text === injectedClassId
-      ) {
-        return decorator;
-      }
+  if (!mixinInterface) {
+    sourceFile.addInterface({
+      name: interfaceName,
+      extends: [type],
+      isExported: true,
+      trailingTrivia: writeLineBreak,
     });
-  };
+    return;
+  }
 
-  const propertyToRemove = node.members.find((member) => {
-    if (member.decorators && isPropertyToRemove(member)) {
-      return member;
+  const mixinTypeIndex = mixinInterface
+    .getExtends()
+    .findIndex((typeArgument) => typeArgument.getText().match(type));
+  const hasMixin = mixinTypeIndex >= 0;
+
+  if (hasMixin && mixinInterface.getExtends().length === 1) {
+    mixinInterface.remove();
+  } else if (hasMixin) {
+    mixinInterface.removeExtends(mixinTypeIndex);
+  } else {
+    mixinInterface.addExtends([type]);
+  }
+}
+
+export function toggleMixin(
+  sourceFile: SourceFile,
+  target: string,
+  mixin: string
+) {
+  const callExpression = sourceFile.getStatement((statement) => {
+    if (statement.getKind() === ts.SyntaxKind.ExpressionStatement) {
+      const callExpression = statement.getFirstDescendantByKind(
+        ts.SyntaxKind.CallExpression
+      );
+
+      if (
+        callExpression &&
+        callExpression.getExpression().getText() === "applyMixins"
+      ) {
+        return true;
+      }
     }
-  });
 
-  return ts.factory.createClassDeclaration(
-    node.decorators,
-    node.modifiers,
-    node.name,
-    node.typeParameters,
-    node.heritageClauses,
-    node.members.filter((member) => member !== propertyToRemove)
-  );
+    return false;
+  }) as ExpressionStatement | undefined;
+  const args = callExpression
+    ? ((callExpression.getExpression() as CallExpression).getArguments()[1] as ArrayLiteralExpression)
+    : undefined;
+  const mixinIndex = args
+    ? args.getElements().findIndex((element) => element.getText() === mixin)
+    : -1;
+
+  if (args && mixinIndex >= 0) {
+    args.removeElement(mixinIndex);
+    if (args.getElements().length === 0) {
+      callExpression?.remove();
+      removeImportDeclaration(sourceFile, MIXINS_IMPORT);
+    }
+  } else if (args) {
+    args.addElement(mixin);
+  } else {
+    sourceFile.addStatements([`applyMixins(${target}, [${mixin}])`]);
+  }
 }

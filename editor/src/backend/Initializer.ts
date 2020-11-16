@@ -6,38 +6,9 @@ export class Initializer {
   private packageJsonWatcher:
     | ((curr: fs.Stats, prev: fs.Stats) => void)
     | undefined;
-  async initialize(cb: (data: Backend) => void) {
-    const packageJson = this.getPackageJson();
-
-    if (packageJson) {
-      if (this.hasRequiredDependencies(packageJson)) {
-        cb({
-          status: "ready",
-          path: path.resolve(),
-        });
-      } else {
-        this.watchPackageJson(async (updatedPackageJson, unwatch) => {
-          if (
-            updatedPackageJson &&
-            this.hasRequiredDependencies(updatedPackageJson)
-          ) {
-            unwatch();
-            cb({
-              status: "ready",
-              path: path.resolve(),
-            });
-          }
-        });
-        cb({
-          status: "missing-dependencies",
-          path: path.resolve(),
-        });
-      }
-    } else {
-      cb({
-        status: "no-project",
-      });
-    }
+  private workspacePath: string;
+  constructor() {
+    this.workspacePath = path.resolve();
   }
   private hasRequiredDependencies(packageJson: PackageJson) {
     return true;
@@ -70,6 +41,42 @@ export class Initializer {
     }
 
     return null;
+  }
+  async initialize(cb: (data: Backend) => void) {
+    const packageJson = this.getPackageJson();
+
+    if (packageJson) {
+      if (this.hasRequiredDependencies(packageJson)) {
+        cb({
+          status: "ready",
+          path: this.workspacePath,
+        });
+      } else {
+        this.watchPackageJson(async (updatedPackageJson, unwatch) => {
+          if (
+            updatedPackageJson &&
+            this.hasRequiredDependencies(updatedPackageJson)
+          ) {
+            unwatch();
+            cb({
+              status: "ready",
+              path: this.workspacePath,
+            });
+          }
+        });
+        cb({
+          status: "missing-dependencies",
+          path: this.workspacePath,
+        });
+      }
+    } else {
+      cb({
+        status: "no-project",
+      });
+    }
+  }
+  getWorkspacePath() {
+    return this.workspacePath;
   }
   dispose() {
     const packageJsonPath = path.resolve("package.json");

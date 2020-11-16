@@ -88,7 +88,6 @@ export type ClientMessage =
       type: "class-new";
       data: {
         classId: string;
-        mixins: Mixin[];
         x: number;
         y: number;
       };
@@ -135,6 +134,13 @@ export type ClientMessage =
       data: {
         instanceId: number;
         name: string;
+      };
+    }
+  | {
+      type: "toggle-mixin";
+      data: {
+        mixin: Mixin;
+        classId: string;
       };
     };
 

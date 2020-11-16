@@ -4,13 +4,17 @@ import * as path from "path";
 import * as prettier from "prettier";
 import * as ts from "typescript";
 
+import { Project } from "ts-morph";
+
 import {
   APP_DIR,
   CONFIGURATION_DIR,
   LIBRARY_IMPORT,
+  MIXINS_IMPORT,
 } from "../common/constants";
 import { ClassMetadata, ExtractedClass, Mixin } from "../common/types";
 import * as ast from "./ast-utils";
+import { TsMorphFs, writeLineBreak } from "./TsMorphFs";
 
 let prettierConfig = {};
 
@@ -24,6 +28,9 @@ try {
 
 export class FilesManager {
   private filesWatcher: fs.FSWatcher | undefined;
+  private project: Project = new Project({
+    fileSystem: new TsMorphFs(prettierConfig),
+  });
   metadata: {
     [name: string]: ClassMetadata;
   } = {};
@@ -173,105 +180,47 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   /*
     This method writes the initial file content
   */
-  async writeClass(classId: string, mixins: Mixin[]) {
+  async writeClass(classId: string) {
     const file = path.resolve(APP_DIR, classId + ".ts")!;
 
-    let code = "";
-
-    if (mixins.length) {
-      code += `
-import { observable } from "${LIBRARY_IMPORT}";
-import { applyMixins, ${mixins
-        .map((mixin) =>
-          mixin === Mixin.StateMachine
-            ? "StateMachine, StateMachineTransitions"
-            : mixin
-        )
-        .join(", ")} } from "${LIBRARY_IMPORT}/mixins";
-
-export interface ${classId} extends ${mixins.map((mixin) => {
-        if (mixin === Mixin.StateMachine) {
-          return "StateMachine<TState>";
-        }
-
-        return mixin;
-      })} {}
-      `;
-    }
-
-    if (mixins.includes(Mixin.StateMachine)) {
-      code += `
-export type TState =
-  | { current: "FOO" }
-  | { current: "BAR" };
-
-export class ${classId} {
-  readonly transitions: StateMachineTransitions<TState> =  {
-    FOO: {
-      BAR: true
-    },
-    BAR: {
-      FOO: true
-    }
-	}
-
-	@observable
-	state: TState = {
-		current: "FOO"
-	}
-}`;
-    } else {
-      code += `
-
-export class ${classId} {}`;
-    }
-
-    if (mixins.length) {
-      code += `
-
-applyMixins(${classId}, [${mixins.join(", ")}]);
-`;
-    }
-
-    await this.writePrettyFile(file, code);
-
+    await this.writePrettyFile(file, `export class ${classId} {}`);
     await this.writeClassToEntryFile(classId);
   }
 
   private async writeClassToEntryFile(classId: string) {
-    const file = path.resolve(APP_DIR, "index.ts")!;
-    const code = await fs.promises.readFile(file);
+    const sourceFile = this.project.addSourceFileAtPath(
+      path.resolve(APP_DIR, "index.ts")
+    )!;
 
-    const newCode = ast.transformTypescript(code, (node) => {
-      if (ts.isSourceFile(node)) {
-        return ast.addImportDeclaration(node, {
-          name: classId,
-          source: `./${classId}`,
-          isType: false,
-        });
-      }
-      if (ts.isNewExpression(node) && node.arguments) {
-        const classes = node.arguments[0] as ts.ObjectLiteralExpression;
-
-        return ts.factory.createNewExpression(
-          node.expression,
-          node.typeArguments,
-          ([
-            ts.factory.createObjectLiteralExpression(
-              [
-                ...classes.properties,
-                ts.factory.createShorthandPropertyAssignment(
-                  classId,
-                  undefined
-                ),
-              ],
-              undefined
-            ),
-          ] as any).concat(node.arguments.slice(1))
-        );
-      }
+    sourceFile.addImportDeclaration({
+      moduleSpecifier: `./${classId}`,
+      namedImports: [classId],
     });
-    await this.writePrettyFile(file, newCode);
+
+    sourceFile
+      .getVariableDeclaration("container")
+      ?.getInitializer()
+      ?.transform((traversal) => {
+        const node = traversal.visitChildren();
+
+        if (
+          ts.isObjectLiteralExpression(node) &&
+          ts.isNewExpression(node.parent) &&
+          node.parent.arguments![0] === node
+        ) {
+          return ts.factory.createObjectLiteralExpression(
+            [
+              ...node.properties,
+              ts.factory.createShorthandPropertyAssignment(classId, undefined),
+            ],
+            undefined
+          );
+        }
+
+        return node;
+      });
+
+    sourceFile.saveSync();
   }
 
   /*
@@ -285,34 +234,26 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
     fromClassId: string;
     toClassId: string;
   }) {
-    const file = path.resolve(APP_DIR, toClassId + ".ts")!;
-    const code = await fs.promises.readFile(file);
+    const sourceFile = this.project.addSourceFileAtPath(
+      path.resolve(APP_DIR, `${toClassId}.ts`)
+    )!;
 
-    const newCode = ast.transformTypescript(code, (node) => {
-      if (ts.isSourceFile(node)) {
-        const withLibraryImport = ast.addImportDeclaration(node, {
+    ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "inject");
+    ast.addImportDeclaration(sourceFile, `./${fromClassId}`, fromClassId, true);
+
+    sourceFile.getClass(toClassId)?.addProperty({
+      name: fromClassId.toLocaleLowerCase(),
+      hasDeclareKeyword: true,
+      decorators: [
+        {
           name: "inject",
-          source: LIBRARY_IMPORT,
-          isType: false,
-        });
-
-        return ast.addImportDeclaration(withLibraryImport, {
-          name: fromClassId,
-          source: `./${fromClassId}`,
-          isType: true,
-        });
-      }
-      if (ast.isClassNode(node, toClassId)) {
-        return ast.addInjectionProperty(
-          node,
-          fromClassId,
-          fromClassId.toLowerCase(),
-          "inject"
-        );
-      }
+          arguments: [`"${fromClassId}"`],
+        },
+      ],
+      type: fromClassId,
     });
 
-    await this.writePrettyFile(file, newCode);
+    sourceFile.saveSync();
   }
 
   async replaceInjection(
@@ -321,60 +262,117 @@ applyMixins(${classId}, [${mixins.join(", ")}]);
     propertyName: string,
     toInjection: "inject" | "injectFactory"
   ) {
-    const file = path.resolve(APP_DIR, name + ".ts")!;
-    const code = await fs.promises.readFile(file);
-    const newCode = ast.transformTypescript(code, (node) => {
-      if (ts.isSourceFile(node)) {
-        const withClassImport = ast.addImportDeclaration(node, {
-          name: fromName,
-          source: `./${fromName}`,
-          isType: true,
-        });
+    const sourceFile = this.project.addSourceFileAtPath(
+      path.resolve(APP_DIR, `${name}.ts`)
+    )!;
+    const property = sourceFile.getClass(name)?.getProperty(propertyName)!;
 
-        const withInjection = ast.addImportDeclaration(withClassImport, {
-          name: toInjection,
-          source: LIBRARY_IMPORT,
-          isType: false,
-        });
+    if (toInjection === "inject") {
+      ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "inject");
+      property.rename(fromName.toLowerCase());
+      property.setType(fromName);
+      property.getDecorator("injectFactory")?.set({
+        name: "inject",
+        arguments: [`"${fromName}"`],
+      });
+    } else {
+      ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "injectFactory");
+      ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "IFactory");
+      property.rename(`create${fromName}`);
+      property.setType(`IFactory<${fromName}>`);
+      property.getDecorator("inject")?.set({
+        name: "injectFactory",
+        arguments: [`"${fromName}"`],
+      });
+    }
 
-        if (toInjection === "injectFactory") {
-          return ast.addImportDeclaration(withInjection, {
-            name: "IFactory",
-            source: LIBRARY_IMPORT,
-            isType: false,
-          });
-        }
-
-        return withInjection;
-      }
-
-      if (ast.isClassNode(node, name)) {
-        return ast.addInjectionProperty(
-          node,
-          fromName,
-          propertyName,
-          toInjection
-        );
-      }
-    });
-
-    await this.writePrettyFile(file, newCode);
+    sourceFile.saveSync();
   }
 
   async removeInjection(fromClassId: string, toClassId: string) {
-    const file = path.resolve(APP_DIR, toClassId + ".ts")!;
-    const code = await fs.promises.readFile(file);
-    const newCode = ast.transformTypescript(code, (node) => {
-      if (ts.isSourceFile(node)) {
-        return ast.removeImportDeclaration(node, fromClassId);
-      }
+    const sourceFile = this.project.addSourceFileAtPath(
+      path.resolve(APP_DIR, `${toClassId}.ts`)
+    )!;
 
-      if (ast.isClassNode(node, toClassId)) {
-        return ast.removeInjectionProperty(node, fromClassId);
-      }
-    });
+    ast.removeImportDeclaration(sourceFile, `./${fromClassId}`);
 
-    await this.writePrettyFile(file, newCode);
+    sourceFile
+      .getClass(toClassId)
+      ?.getProperty((property) => {
+        const name = property.getName();
+
+        return (
+          name === fromClassId.toLowerCase() || name === `create${fromClassId}`
+        );
+      })
+      ?.remove();
+
+    sourceFile.saveSync();
+  }
+
+  async toggleMixin(classId: string, mixin: Mixin) {
+    const sourceFile = this.project.addSourceFileAtPath(
+      path.resolve(APP_DIR, `${classId}.ts`)
+    )!;
+
+    ast.addImportDeclaration(sourceFile, MIXINS_IMPORT, "applyMixins");
+
+    switch (mixin) {
+      case "Resolver":
+      case "Disposable":
+        ast.toggleImportDeclaration(sourceFile, MIXINS_IMPORT, mixin);
+        ast.toggleMixinInterface(sourceFile, classId, mixin);
+        ast.toggleMixin(sourceFile, classId, mixin);
+        break;
+      case "StateMachine":
+        ast.toggleImportDeclaration(sourceFile, MIXINS_IMPORT, mixin);
+        ast.toggleImportDeclaration(
+          sourceFile,
+          MIXINS_IMPORT,
+          "StateMachineTransitions"
+        );
+        ast.toggleMixinInterface(sourceFile, classId, "StateMachine<TState>");
+        const stateType = sourceFile.getTypeAlias("TState");
+        const clas = sourceFile.getClass(classId)!;
+        const transitions = clas.getProperty("transitions");
+        const state = clas.getProperty("state");
+        if (transitions && state && stateType) {
+          transitions.remove();
+          state.remove();
+          stateType.remove();
+        } else {
+          ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "observable");
+          sourceFile.insertTypeAlias(
+            sourceFile.getClass(classId)!.getChildIndex(),
+            {
+              name: "TState",
+              isExported: true,
+              type: '{ current: "FOO" } | { current: "BAR" }',
+            }
+          );
+          clas.addProperty({
+            name: "transitions",
+            isReadonly: true,
+            type: "StateMachineTransitions<TState>",
+            initializer: "{ FOO: { BAR: true }, BAR: { FOO: true } }",
+            trailingTrivia: writeLineBreak,
+          });
+          clas.addProperty({
+            name: "state",
+            type: "TState",
+            initializer: `{ current: "FOO" }`,
+            decorators: [
+              {
+                name: "observable",
+              },
+            ],
+          });
+        }
+        ast.toggleMixin(sourceFile, classId, mixin);
+        break;
+    }
+
+    sourceFile.saveSync();
   }
 
   async initialize(listeners: {

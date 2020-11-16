@@ -73,14 +73,6 @@ const EditValue = styled(RiShareBoxLine)<{ disabled?: boolean }>((props) =>
   props.disabled ? `opacity: 0.5;` : `cursor: pointer;`
 );
 
-const MixinItem = styled.div`
-  display: flex;
-  align-items: center;
-  > input {
-    margin-right: 4px;
-  }
-`;
-
 const NameInput = styled.input`
   outline: none;
   font-size: 16px;
@@ -120,7 +112,6 @@ export const NodeInnerDefault = observer(
     const backend = useBackend();
     const [name, setName] = React.useState(node.properties.name);
     const nameInput = React.useRef<HTMLInputElement | null>(null);
-    const [mixins, setMixins] = React.useState<Mixin[]>([]);
     const instanceId =
       node.properties.currentInstanceId ||
       Object.keys(node.properties.instances)[0];
@@ -131,16 +122,6 @@ export const NodeInnerDefault = observer(
       });
     }, [node.properties.isEditing]);
 
-    const toggleMixin = (mixin: Mixin) => {
-      setMixins((current) => {
-        if (current.includes(mixin)) {
-          return current.filter((item) => item !== mixin);
-        }
-
-        return current.concat(mixin);
-      });
-    };
-
     return (
       <Outer className={className}>
         <div>
@@ -149,7 +130,7 @@ export const NodeInnerDefault = observer(
               <NameChangeForm
                 onSubmit={(event) => {
                   event.preventDefault();
-                  backend.actions.onClassSubmit(node, name, mixins);
+                  backend.actions.onClassSubmit(node, name);
                 }}
               >
                 <NameInput
@@ -165,23 +146,6 @@ export const NodeInnerDefault = observer(
                   }}
                 />
               </NameChangeForm>
-              <h4>Capabilities</h4>
-              {Object.values(Mixin).map((mixin) => (
-                <MixinItem key={mixin}>
-                  <input
-                    type="checkbox"
-                    checked={mixins.includes(mixin)}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (nameInput.current) nameInput.current.focus();
-                    }}
-                    onChange={() => {
-                      toggleMixin(mixin);
-                    }}
-                  />
-                  <label>{mixin}</label>
-                </MixinItem>
-              ))}
             </div>
           ) : (
             <Header>

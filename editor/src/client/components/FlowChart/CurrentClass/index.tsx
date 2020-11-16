@@ -5,6 +5,7 @@ import { MdKeyboardArrowLeft } from "react-icons/md";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
+import { Mixin } from "../../../../common/types";
 import { useBackend } from "../../../backend";
 import { Action } from "./Action";
 import { Computed } from "./Computed";
@@ -43,6 +44,23 @@ const InstanceSelector = styled.div`
 const InstanceSelectorLeft = styled(MdKeyboardArrowLeft)<{ disabled: boolean }>`
   cursor: ${(props) => (props.disabled ? "default" : "pointer")};
   opacity: ${(props) => (props.disabled ? "0.5" : "1")};
+`;
+
+const Mixins = styled.div`
+  display: flex;
+  margin-bottom: ${space[4]};
+  > * {
+    margin-right: ${space[2]};
+  }
+`;
+
+const MixinItem = styled.div`
+  display: flex;
+  align-items: center;
+  color: ${colors.gray[500]};
+  > input {
+    margin-right: 4px;
+  }
 `;
 
 const InstanceSelectorRight = styled(MdKeyboardArrowRight)<{
@@ -121,6 +139,23 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
           />
         </ClassNavigation>
       </Title>
+      <Mixins>
+        {Object.values(Mixin).map((mixin) => (
+          <MixinItem key={mixin}>
+            <input
+              type="checkbox"
+              checked={node.properties.mixins.includes(mixin)}
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              onChange={() => {
+                backend.actions.onToggleMixin(node.properties.name, mixin);
+              }}
+            />
+            <label>{mixin}</label>
+          </MixinItem>
+        ))}
+      </Mixins>
       <div>
         {injectors.map((injector) => (
           <Injector

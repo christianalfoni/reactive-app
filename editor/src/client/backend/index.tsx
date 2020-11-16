@@ -17,10 +17,11 @@ export type ClientBackend = {
   chartActions: typeof actions;
   actions: {
     onInstanceClick(classId: string, instanceId: number): void;
-    onClassSubmit(node: INode, name: string, mixins: Mixin[]): void;
+    onClassSubmit(node: INode, name: string): void;
     onToggleInjectorType(node: INode, injector: Injector): void;
     onOpenClass(classId: string): void;
     onRunAction(instanceId: number, name: string): void;
+    onToggleMixin(classId: string, mixin: Mixin): void;
   };
   send: (message: any) => void;
 } & Backend;
@@ -125,12 +126,11 @@ const backend = observable<ClientBackend>({
   }, {}),
   send,
   actions: {
-    onClassSubmit(node, name, mixins) {
+    onClassSubmit(node, name) {
       delete chart.nodes[node.id];
       node.id = name;
       node.properties.name = name;
       node.properties.isEditing = false;
-      node.properties.mixins = mixins;
 
       chart.nodes[name] = node;
 
@@ -142,7 +142,6 @@ const backend = observable<ClientBackend>({
           classId: node.id,
           x: node.position.x,
           y: node.position.y,
-          mixins,
         },
       });
     },
@@ -178,6 +177,15 @@ const backend = observable<ClientBackend>({
         data: {
           instanceId,
           name,
+        },
+      });
+    },
+    onToggleMixin(classId: string, mixin: Mixin) {
+      send({
+        type: "toggle-mixin",
+        data: {
+          classId,
+          mixin,
         },
       });
     },
@@ -226,6 +234,7 @@ ws.addEventListener("message", (event) => {
         message.data.actions;
       chart.nodes[message.data.classId].properties.computed =
         message.data.computed;
+      chart.nodes[message.data.classId].properties.mixins = message.data.mixins;
       break;
     }
     case "classes": {

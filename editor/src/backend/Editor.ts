@@ -80,8 +80,35 @@ export class Editor {
 
     switch (message.type) {
       case "init":
-        if (this.initializer) {
-          this.initializer.dispose();
+        const sendClasses = () => {
+          this.sendEditorMessage({
+            type: "classes",
+            data: Object.keys(this.filesManager.metadata).reduce<{
+              [name: string]: Class;
+            }>((aggr, classId) => {
+              const clas = this.filesManager.classes[classId];
+              const mdata = this.filesManager.metadata[classId];
+              aggr[classId] = {
+                x: mdata.x,
+                y: mdata.y,
+                ...clas,
+              };
+
+              return aggr;
+            }, {}),
+          });
+        };
+
+        if (this.initializer && this.filesManager) {
+          this.sendEditorMessage({
+            type: "init",
+            data: {
+              path: this.initializer.getWorkspacePath(),
+              status: "ready",
+            },
+          });
+          sendClasses();
+          return;
         }
 
         this.initializer = new Initializer();
@@ -92,10 +119,6 @@ export class Editor {
           });
 
           if (data.status === "ready") {
-            if (this.filesManager) {
-              this.filesManager.dispose();
-            }
-
             this.filesManager = new FilesManager();
             await this.filesManager.initialize({
               onClassChange: this.onClassChange.bind(this),
@@ -103,27 +126,12 @@ export class Editor {
               onClassDelete: this.onClassDelete.bind(this),
             });
 
-            this.sendEditorMessage({
-              type: "classes",
-              data: Object.keys(this.filesManager.metadata).reduce<{
-                [name: string]: Class;
-              }>((aggr, classId) => {
-                const clas = this.filesManager.classes[classId];
-                const mdata = this.filesManager.metadata[classId];
-                aggr[classId] = {
-                  x: mdata.x,
-                  y: mdata.y,
-                  ...clas,
-                };
-
-                return aggr;
-              }, {}),
-            });
+            sendClasses();
           }
         });
         return;
       case "class-new": {
-        this.filesManager.writeClass(message.data.classId, message.data.mixins);
+        this.filesManager.writeClass(message.data.classId);
         this.filesManager.writeMetadata(message.data);
         break;
       }
@@ -155,6 +163,9 @@ export class Editor {
         spawn("code", [path.join(APP_DIR, message.data.classId + ".ts")]);
         break;
       }
+      case "toggle-mixin":
+        this.filesManager.toggleMixin(message.data.classId, message.data.mixin);
+        break;
       default:
         this.clientSocket?.send(JSON.stringify(message));
     }
