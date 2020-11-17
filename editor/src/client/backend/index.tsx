@@ -1,14 +1,6 @@
-import { action, observable, reaction } from "mobx";
+import { observable } from "mobx";
 import * as React from "react";
-
-import { colors, getVariableValue } from "../../common/design-tokens";
-import {
-  Backend,
-  BackendMessage,
-  ClientMessage,
-  Injector,
-  Mixin,
-} from "../../common/types";
+import { Backend, ClientMessage, Injector, Mixin } from "../../common/types";
 import { IChart, INode } from "../flow-chart";
 import * as actions from "../flow-chart/container/actions";
 import { createOnMessage } from "./onMessage";
@@ -44,22 +36,36 @@ export const chart: IChart = observable({
 let isConnected = false;
 const bufferMessages: ClientMessage[] = [];
 const backendPort = location.search.split("?")[1].split("=")[1];
-const ws = new WebSocket(`ws://localhost:${backendPort}?editor=1`);
+let ws: WebSocket;
+
+function connectWebsocket() {
+  ws = new WebSocket(`ws://localhost:${backendPort}?editor=1`);
+
+  ws.onopen = () => {
+    while (bufferMessages.length) {
+      ws.send(JSON.stringify(bufferMessages.shift()));
+    }
+
+    isConnected = true;
+  };
+
+  ws.addEventListener("message", createOnMessage(chart, backend));
+}
+
 const send = (message: ClientMessage) => {
   if (!isConnected) {
     bufferMessages.push(message);
     return;
   }
 
-  ws.send(JSON.stringify(message));
-};
-
-ws.onopen = () => {
-  while (bufferMessages.length) {
-    ws.send(JSON.stringify(bufferMessages.shift()));
+  if (ws.readyState !== ws.OPEN) {
+    isConnected = false;
+    bufferMessages.push(message);
+    connectWebsocket();
+    return;
   }
 
-  isConnected = true;
+  ws.send(JSON.stringify(message));
 };
 
 const chartEvents: { [key: string]: (...args: any[]) => void } = {
@@ -213,7 +219,7 @@ const backend = observable<ClientBackend>({
   },
 });
 
-ws.addEventListener("message", createOnMessage(chart, backend));
+connectWebsocket();
 
 const backendContext = React.createContext<ClientBackend>(null as any);
 

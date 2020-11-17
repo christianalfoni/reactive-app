@@ -34,6 +34,7 @@ export type Computed = {
 
 export type ActionExecution = {
   args: any[];
+  time: number;
 };
 
 export type Action = {

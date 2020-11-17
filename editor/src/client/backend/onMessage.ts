@@ -283,6 +283,7 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
 
             instance.actionExecutions[name].unshift({
               args,
+              time: Date.now(),
             });
 
             break;

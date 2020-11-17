@@ -39,6 +39,17 @@ const Wrapper = styled.div`
   margin-bottom: ${space[2]};
 `;
 
+const Execution = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const ExecutionTime = styled.span`
+  font-size: 12px;
+  color: ${colors.gray[500]};
+  margin-right: ${space[2]};
+`;
+
 const ExecutionWrapper = styled.div``;
 
 export const Action = observer(
@@ -80,13 +91,12 @@ export const Action = observer(
         {isExpanded && instance && instance.actionExecutions[action.name] ? (
           <ExecutionWrapper>
             {instance.actionExecutions[action.name].map((execution, index) => {
+              const date = new Date(execution.time);
               return (
-                <ValueInspector
-                  key={index}
-                  small
-                  value={execution.args}
-                  delimiter="."
-                />
+                <Execution key={index}>
+                  <ExecutionTime>{date.toLocaleTimeString()}</ExecutionTime>
+                  <ValueInspector small value={execution.args} delimiter="." />
+                </Execution>
               );
             })}
           </ExecutionWrapper>
