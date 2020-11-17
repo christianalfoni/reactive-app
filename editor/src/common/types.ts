@@ -32,6 +32,10 @@ export type Computed = {
   name: string;
 };
 
+export type ActionExecution = {
+  args: any[];
+};
+
 export type Action = {
   name: string;
 };
@@ -57,6 +61,9 @@ export type ClassInstance = {
   };
   injections: {
     [propertyName: string]: number[];
+  };
+  actionExecutions: {
+    [actionName: string]: ActionExecution[];
   };
 };
 
@@ -142,6 +149,12 @@ export type ClientMessage =
         mixin: Mixin;
         classId: string;
       };
+    }
+  | {
+      type: "class-delete";
+      data: {
+        classId: string;
+      };
     };
 
 export type ClassMetadata = { x: number; y: number };
@@ -171,6 +184,10 @@ export type BackendMessage =
   | {
       type: "app";
       data: AppMessage;
+    }
+  | {
+      type: "class-delete";
+      data: string;
     };
 
 export type AppMessage =
@@ -209,5 +226,14 @@ export type AppMessage =
         index: number;
         deleteCount: number;
         items: any[];
+      };
+    }
+  | {
+      type: "action";
+      data: {
+        classId: string;
+        instanceId: number;
+        name: string;
+        args: any[];
       };
     };

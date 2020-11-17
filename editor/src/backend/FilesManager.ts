@@ -58,6 +58,15 @@ export class FilesManager {
     }
   }
 
+  private getAppSourceFile(fileName: string) {
+    const fullPath = path.resolve(APP_DIR, `${fileName}.ts`);
+
+    return (
+      this.project.getSourceFile(fullPath) ||
+      this.project.addSourceFileAtPath(fullPath)
+    );
+  }
+
   private async ensureConfigurationDir() {
     const configDir = path.resolve(CONFIGURATION_DIR);
 
@@ -183,14 +192,12 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   async writeClass(classId: string) {
     const file = path.resolve(APP_DIR, classId + ".ts")!;
 
-    await this.writePrettyFile(file, `export class ${classId} {}`);
     await this.writeClassToEntryFile(classId);
+    await this.writePrettyFile(file, `export class ${classId} {}`);
   }
 
   private async writeClassToEntryFile(classId: string) {
-    const sourceFile = this.project.addSourceFileAtPath(
-      path.resolve(APP_DIR, "index.ts")
-    )!;
+    const sourceFile = this.getAppSourceFile("index");
 
     sourceFile.addImportDeclaration({
       moduleSpecifier: `./${classId}`,
@@ -234,9 +241,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     fromClassId: string;
     toClassId: string;
   }) {
-    const sourceFile = this.project.addSourceFileAtPath(
-      path.resolve(APP_DIR, `${toClassId}.ts`)
-    )!;
+    const sourceFile = this.getAppSourceFile(toClassId);
 
     ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "inject");
     ast.addImportDeclaration(sourceFile, `./${fromClassId}`, fromClassId, true);
@@ -262,9 +267,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     propertyName: string,
     toInjection: "inject" | "injectFactory"
   ) {
-    const sourceFile = this.project.addSourceFileAtPath(
-      path.resolve(APP_DIR, `${name}.ts`)
-    )!;
+    const sourceFile = this.getAppSourceFile(name);
     const property = sourceFile.getClass(name)?.getProperty(propertyName)!;
 
     if (toInjection === "inject") {
@@ -290,9 +293,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   }
 
   async removeInjection(fromClassId: string, toClassId: string) {
-    const sourceFile = this.project.addSourceFileAtPath(
-      path.resolve(APP_DIR, `${toClassId}.ts`)
-    )!;
+    const sourceFile = this.getAppSourceFile(toClassId);
 
     ast.removeImportDeclaration(sourceFile, `./${fromClassId}`);
 
@@ -311,9 +312,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   }
 
   async toggleMixin(classId: string, mixin: Mixin) {
-    const sourceFile = this.project.addSourceFileAtPath(
-      path.resolve(APP_DIR, `${classId}.ts`)
-    )!;
+    const sourceFile = this.getAppSourceFile(classId);
 
     ast.addImportDeclaration(sourceFile, MIXINS_IMPORT, "applyMixins");
 
@@ -375,9 +374,15 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     sourceFile.saveSync();
   }
 
+  async deleteClass(classId: string) {
+    const file = path.resolve(APP_DIR, classId + ".ts")!;
+
+    await fs.promises.unlink(file);
+  }
+
   async initialize(listeners: {
-    onClassChange: (name: string, e: ExtractedClass) => void;
-    onClassCreate: (name: string, e: ExtractedClass) => void;
+    onClassChange: (e: ExtractedClass) => void;
+    onClassCreate: (e: ExtractedClass) => void;
     onClassDelete: (name: string) => void;
   }) {
     await this.ensureConfigurationDir();
@@ -395,25 +400,57 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
           return;
         }
 
+        console.log(eventType, fileName);
+
         if (eventType === "change") {
           const updatedClass = await this.getClass(fileName);
           this.classes[updatedClass.classId] = updatedClass;
-          listeners.onClassChange(
-            this.getClassIdFromFileName(fileName),
-            updatedClass
-          );
+          listeners.onClassChange(updatedClass);
         } else if (
           eventType === "rename" &&
-          fs.existsSync(path.resolve(fileName))
+          fs.existsSync(path.resolve(APP_DIR, fileName))
         ) {
           const createdClass = await this.getClass(fileName);
           this.classes[createdClass.classId] = createdClass;
-          listeners.onClassCreate(
-            this.getClassIdFromFileName(fileName),
-            createdClass
-          );
+          listeners.onClassCreate(createdClass);
         } else {
-          listeners.onClassDelete(this.getClassIdFromFileName(fileName));
+          console.log("DELETING!");
+          const classId = this.getClassIdFromFileName(fileName);
+          delete this.classes[classId];
+          delete this.metadata[classId];
+          const file = path.resolve(CONFIGURATION_DIR, "metadata.json")!;
+          await this.writePrettyFile(
+            file,
+            JSON.stringify(this.metadata, null, 2)
+          );
+          const sourceFile = this.getAppSourceFile("index");
+          ast.removeImportDeclaration(sourceFile, `./${classId}`);
+          sourceFile
+            .getVariableDeclaration("container")
+            ?.getInitializer()
+            ?.transform((traversal) => {
+              const node = traversal.visitChildren();
+
+              if (
+                ts.isObjectLiteralExpression(node) &&
+                ts.isNewExpression(node.parent) &&
+                node.parent.arguments![0] === node
+              ) {
+                return ts.factory.createObjectLiteralExpression(
+                  node.properties.filter(
+                    (property) =>
+                      !property.name ||
+                      !ts.isIdentifier(property.name) ||
+                      property.name.escapedText !== classId
+                  ),
+                  undefined
+                );
+              }
+
+              return node;
+            });
+          sourceFile.saveSync();
+          listeners.onClassDelete(classId);
         }
       }
     );

@@ -22,7 +22,8 @@ const Injection = ({ id, onClick }: { id: number; onClick: () => void }) => {
 };
 
 const LinkIcon = styled(HiLink)`
-  margin: 0 ${space[1]};
+  margin-left: ${space[1]};
+  margin-right: ${space[2]};
   color: ${colors.gray[600]};
 `;
 

@@ -40,14 +40,14 @@ export const SideBar = observer(() => {
             id: "input",
             type: "top",
             properties: {
-              linkColor: getVariableValue("activityBar-activeBorder"),
+              linkColor: colors.purple[500],
             },
           },
           output: {
             id: "output",
             type: "bottom",
             properties: {
-              linkColor: getVariableValue("activityBar-activeBorder"),
+              linkColor: colors.purple[500],
             },
           },
         }}

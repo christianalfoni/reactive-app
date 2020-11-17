@@ -1,6 +1,6 @@
 import { observer } from "mobx-react";
 import * as React from "react";
-import { MdEdit, MdKeyboardArrowRight } from "react-icons/md";
+import { MdEdit, MdKeyboardArrowRight, MdDelete } from "react-icons/md";
 import { MdKeyboardArrowLeft } from "react-icons/md";
 import styled from "styled-components";
 
@@ -29,6 +29,12 @@ const ClassNavigation = styled.div`
 `;
 
 const EditFile = styled(MdEdit)`
+  margin-left: ${space[2]};
+  cursor: pointer;
+  color: ${colors.gray[200]};
+`;
+
+const DeleteFile = styled(MdDelete)`
   margin-left: ${space[2]};
   cursor: pointer;
   color: ${colors.gray[200]};
@@ -137,6 +143,11 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
               backend.actions.onOpenClass(id);
             }}
           />
+          <DeleteFile
+            onClick={() => {
+              backend.actions.onDeleteClass(id);
+            }}
+          />
         </ClassNavigation>
       </Title>
       <Mixins>
@@ -191,6 +202,7 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
             action={action}
             runAction={backend.actions.onRunAction}
             instanceId={node.properties.currentInstanceId}
+            instance={instance}
           />
         ))}
       </div>

@@ -166,6 +166,9 @@ export class Editor {
       case "toggle-mixin":
         this.filesManager.toggleMixin(message.data.classId, message.data.mixin);
         break;
+      case "class-delete":
+        this.filesManager.deleteClass(message.data.classId);
+        break;
       default:
         this.clientSocket?.send(JSON.stringify(message));
     }
@@ -173,9 +176,9 @@ export class Editor {
   private sendEditorMessage(message: BackendMessage) {
     this.editorSocket?.send(JSON.stringify(message));
   }
-  private onClassChange(name: string, extractedClass: ExtractedClass) {
+  private onClassChange(extractedClass: ExtractedClass) {
     const clas = {
-      ...this.filesManager.metadata[name],
+      ...this.filesManager.metadata[extractedClass.classId],
       ...extractedClass,
     };
 
@@ -184,9 +187,9 @@ export class Editor {
       data: clas,
     });
   }
-  private onClassCreate(name: string, extractedClass: ExtractedClass) {
+  private onClassCreate(extractedClass: ExtractedClass) {
     const clas = {
-      ...this.filesManager.metadata[name],
+      ...this.filesManager.metadata[extractedClass.classId],
       ...extractedClass,
     };
 
@@ -195,7 +198,12 @@ export class Editor {
       data: clas,
     });
   }
-  private onClassDelete(name: string) {}
+  private onClassDelete(name: string) {
+    this.sendEditorMessage({
+      type: "class-delete",
+      data: name,
+    });
+  }
   connect() {
     return new Promise<number>((resolve, reject) => {
       const port = 5051;

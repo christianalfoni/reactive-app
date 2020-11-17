@@ -7,7 +7,7 @@ import {
 import * as ts from "typescript";
 import { MIXINS_IMPORT } from "../common/constants";
 
-import { Injector, Mixin, Observable } from "../common/types";
+import { Action, Computed, Injector, Mixin, Observable } from "../common/types";
 import { writeLineBreak } from "./TsMorphFs";
 
 export function getClassNode(
@@ -111,7 +111,7 @@ export function getObservables(node: ts.ClassDeclaration) {
 }
 
 export function getComputed(node: ts.ClassDeclaration) {
-  return node.members.reduce<Observable[]>((aggr, member) => {
+  return node.members.reduce<Computed[]>((aggr, member) => {
     if (ts.isGetAccessor(member)) {
       const identifier =
         member.decorators && ts.isIdentifier(member.decorators[0].expression)
@@ -130,7 +130,7 @@ export function getComputed(node: ts.ClassDeclaration) {
 }
 
 export function getActions(node: ts.ClassDeclaration) {
-  return node.members.reduce<Observable[]>((aggr, member) => {
+  return node.members.reduce<Action[]>((aggr, member) => {
     if (ts.isMethodDeclaration(member)) {
       const identifier =
         member.decorators && ts.isIdentifier(member.decorators[0].expression)

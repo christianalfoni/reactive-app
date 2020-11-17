@@ -1,10 +1,12 @@
 import { observer } from "mobx-react";
 import * as React from "react";
 import { AiOutlineCode } from "react-icons/ai";
+import { RiArrowDownSLine, RiArrowRightSLine } from "react-icons/ri";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
 import { ClassInstance, Action as TAction } from "../../../../common/types";
+import { useBackend } from "../../../backend";
 import ValueInspector from "../../ValueInspector";
 
 const CurrentValueContainer = styled.div`
@@ -19,6 +21,7 @@ const ActionWrapper = styled.div`
 `;
 
 const ActionIcon = styled(AiOutlineCode)`
+  margin-left: ${space[1]};
   margin-right: ${space[2]};
   color: ${colors.gray[600]};
 `;
@@ -32,31 +35,63 @@ const RunWrapper = styled.div`
   }
 `;
 
+const Wrapper = styled.div`
+  margin-bottom: ${space[2]};
+`;
+
+const ExecutionWrapper = styled.div``;
+
 export const Action = observer(
   ({
     action,
     instanceId,
+    instance,
     runAction,
   }: {
     action: TAction;
     instanceId: number | null;
+    instance: ClassInstance | null;
     runAction: (instanceId: number, name: string) => void;
   }) => {
+    const [isExpanded, setExpanded] = React.useState(false);
+
     return (
-      <ActionWrapper>
-        <ActionIcon />
-        {action.name}
-        <RunWrapper
-          onClick={() => {
-            if (instanceId === null) {
-              return;
-            }
-            runAction(instanceId, action.name);
-          }}
-        >
-          run
-        </RunWrapper>
-      </ActionWrapper>
+      <Wrapper>
+        <ActionWrapper onClick={() => setExpanded(!isExpanded)}>
+          {isExpanded ? <RiArrowDownSLine /> : <RiArrowRightSLine />}
+          <ActionIcon />
+          {action.name} (
+          {instance && instance.actionExecutions[action.name]
+            ? instance.actionExecutions[action.name].length
+            : "0"}
+          )
+          <RunWrapper
+            onClick={(event) => {
+              event.stopPropagation();
+              if (instanceId === null) {
+                return;
+              }
+              runAction(instanceId, action.name);
+            }}
+          >
+            run
+          </RunWrapper>
+        </ActionWrapper>
+        {isExpanded && instance && instance.actionExecutions[action.name] ? (
+          <ExecutionWrapper>
+            {instance.actionExecutions[action.name].map((execution, index) => {
+              return (
+                <ValueInspector
+                  key={index}
+                  small
+                  value={execution.args}
+                  delimiter="."
+                />
+              );
+            })}
+          </ExecutionWrapper>
+        ) : null}
+      </Wrapper>
     );
   }
 );

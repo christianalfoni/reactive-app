@@ -8,7 +8,7 @@ export interface IDevtool {
   spy(): void;
   setInstanceSpy(instanceId: number): void;
   unsetInstanceSpy(): void;
-  sendInstance(id: string, instanceId: number): void;
+  sendInstance(id: string, instanceId: number, instance: any): void;
   sendInjection(data: {
     propertyName: string;
     injectClassId: string;
@@ -45,6 +45,13 @@ export type TDebugMessage = (
         propertyName: string;
         injectClassId: string;
         injectInstanceId: number;
+      };
+    }
+  | {
+      type: "action";
+      data: {
+        name: string;
+        args: any[];
       };
     }
 ) & {
@@ -159,6 +166,17 @@ export class Devtool implements IDevtool {
         break;
       }
       case "action": {
+        if (change.object && (change.object as any)[INSTANCE_ID]) {
+          this.send({
+            type: "action",
+            data: {
+              args: change.arguments,
+              name: change.name,
+              classId: (change.object as any).constructor.name,
+              instanceId: (change.object as any)[INSTANCE_ID],
+            },
+          });
+        }
         break;
       }
     }
@@ -227,7 +245,6 @@ export class Devtool implements IDevtool {
         change.debugObjectName.match(/^[^.]*$/) &&
         !this._mobxIdToInstanceId[change.debugObjectName]
       ) {
-        this._instanceIdToInstance[instanceId] = change.object;
         this._mobxIdToInstanceId[change.debugObjectName] = instanceId;
       }
     };
@@ -235,7 +252,8 @@ export class Devtool implements IDevtool {
   unsetInstanceSpy() {
     this._onSpyInstantiation = undefined;
   }
-  sendInstance(classId: string, instanceId: number) {
+  sendInstance(classId: string, instanceId: number, instance: any) {
+    this._instanceIdToInstance[instanceId] = instance;
     this.send({
       type: "instance",
       data: {

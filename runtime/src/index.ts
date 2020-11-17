@@ -97,7 +97,7 @@ export class Container<T extends IContainerConfig> implements IContainer<T> {
     }
 
     this._devtool?.unsetInstanceSpy();
-    this._devtool?.sendInstance(id as string, instanceId);
+    this._devtool?.sendInstance(id as string, instanceId, instance);
 
     return (instance as unknown) as any;
   }
