@@ -38,6 +38,14 @@ export class FilesManager {
     [name: string]: ExtractedClass;
   } = {};
 
+  private getInjectName(classId: string) {
+    return classId[0].toLowerCase() + classId.substr(1);
+  }
+
+  private getInjectFactoryName(classId: string) {
+    return `create${classId}`;
+  }
+
   private writePrettyFile(fileName: string, content: string) {
     return fs.promises.writeFile(
       fileName,
@@ -272,7 +280,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
 
     if (toInjection === "inject") {
       ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "inject");
-      property.rename(fromName.toLowerCase());
+      property.rename(this.getInjectName(fromName));
       property.setType(fromName);
       property.getDecorator("injectFactory")?.set({
         name: "inject",
@@ -281,8 +289,8 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     } else {
       ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "injectFactory");
       ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "IFactory");
-      property.rename(`create${fromName}`);
-      property.setType(`IFactory<${fromName}>`);
+      property.rename(this.getInjectFactoryName(fromName));
+      property.setType(`IFactory<typeof ${fromName}>`);
       property.getDecorator("inject")?.set({
         name: "injectFactory",
         arguments: [`"${fromName}"`],
@@ -303,7 +311,8 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
         const name = property.getName();
 
         return (
-          name === fromClassId.toLowerCase() || name === `create${fromClassId}`
+          name === this.getInjectName(fromClassId) ||
+          name === this.getInjectFactoryName(fromClassId)
         );
       })
       ?.remove();

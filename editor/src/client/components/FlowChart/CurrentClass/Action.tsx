@@ -84,6 +84,11 @@ export const Action = observer(
               }
               runAction(instanceId, action.name);
             }}
+            style={
+              instance
+                ? undefined
+                : { color: colors.gray[700], cursor: "default" }
+            }
           >
             run
           </RunWrapper>
