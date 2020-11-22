@@ -65,7 +65,10 @@ export const SideBar = observer(() => {
       />
       <h3>Class inspector</h3>
       {backend.chart.selected && backend.chart.selected.id ? (
-        <CurrentClass id={backend.chart.selected.id!} />
+        <CurrentClass
+          key={backend.chart.selected.id}
+          id={backend.chart.selected.id!}
+        />
       ) : (
         <NoClass>No class selected</NoClass>
       )}

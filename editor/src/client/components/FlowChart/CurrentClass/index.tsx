@@ -76,8 +76,23 @@ const InstanceSelectorRight = styled(MdKeyboardArrowRight)<{
   opacity: ${(props) => (props.disabled ? "0.5" : "1")};
 `;
 
+const NameInput = styled.input`
+  outline: none;
+  font-size: 18px;
+  color: ${colors.gray[100]};
+  background-color: transparent;
+  border: 0;
+  font-weight: bold;
+  &:active,
+  &:focus {
+    border: 0;
+    outline: none;
+  }
+`;
+
 export const CurrentClass = observer(({ id }: { id: string }) => {
   const backend = useBackend();
+  const [newName, setNewName] = React.useState(id);
   const node = backend.chart.nodes[id];
   const instance = node.properties.currentInstanceId
     ? node.properties.instances[node.properties.currentInstanceId]
@@ -90,7 +105,26 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
   return (
     <Wrapper>
       <Title>
-        {node.properties.name}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (newName !== id) {
+              backend.actions.onClassRenameSubmit(node, newName);
+            }
+          }}
+        >
+          <NameInput
+            placeholder="Name..."
+            autoFocus
+            value={newName}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+            }}
+            onChange={(event) => {
+              setNewName(event.target.value);
+            }}
+          />
+        </form>
         <ClassNavigation>
           {node.properties.currentInstanceId !== null ? (
             <InstanceSelector>

@@ -384,9 +384,32 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   }
 
   async deleteClass(classId: string) {
-    const file = path.resolve(APP_DIR, classId + ".ts")!;
+    const file = path.resolve(APP_DIR, classId + ".ts");
 
     await fs.promises.unlink(file);
+  }
+
+  async renameClass(fromClassId: string, toClassId: string) {
+    await this.writeMetadata({
+      classId: toClassId,
+      ...this.metadata[fromClassId],
+    });
+    const fromClassPath = path.resolve(APP_DIR, fromClassId + ".ts");
+    const toClassPath = path.resolve(APP_DIR, toClassId + ".ts");
+    const fs = this.project.getFileSystem();
+    const contents = fs.readFileSync(fromClassPath);
+    const sourceFile = this.project.createSourceFile(toClassPath, contents);
+
+    const classDefinition = sourceFile.getClass(fromClassId)!;
+    classDefinition.rename(toClassId);
+
+    // Rename interface
+
+    fs.writeFileSync(toClassPath, sourceFile.print());
+
+    await this.writeClassToEntryFile(toClassId);
+
+    await this.deleteClass(fromClassId);
   }
 
   async initialize(listeners: {

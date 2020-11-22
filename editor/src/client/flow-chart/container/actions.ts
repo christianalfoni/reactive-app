@@ -240,7 +240,10 @@ export const onDeleteKey: IStateCallback<IOnDeleteKey> = ({
 export const onNodeClick: IStateCallback<IOnNodeClick> = ({ nodeId }) => (
   chart: IChart
 ) => {
-  if (chart.selected.id !== nodeId || chart.selected.type !== "node") {
+  if (
+    (chart.selected.id !== nodeId || chart.selected.type !== "node") &&
+    !chart.nodes[nodeId].properties.isEditing
+  ) {
     chart.selected = {
       type: "node",
       id: nodeId,

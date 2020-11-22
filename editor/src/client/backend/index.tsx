@@ -1,4 +1,4 @@
-import { observable } from "mobx";
+import { observable, toJS } from "mobx";
 import * as React from "react";
 import { Backend, ClientMessage, Injector, Mixin } from "../../common/types";
 import { IChart, INode } from "../flow-chart";
@@ -11,6 +11,7 @@ export type ClientBackend = {
   actions: {
     onInstanceClick(classId: string, instanceId: number): void;
     onClassSubmit(node: INode, name: string): void;
+    onClassRenameSubmit(node: INode, name: string): void;
     onToggleInjectorType(node: INode, injector: Injector): void;
     onOpenClass(classId: string): void;
     onRunAction(instanceId: number, name: string): void;
@@ -161,6 +162,15 @@ const backend = observable<ClientBackend>({
           classId: node.id,
           x: node.position.x,
           y: node.position.y,
+        },
+      });
+    },
+    onClassRenameSubmit(node, name) {
+      send({
+        type: "class-rename",
+        data: {
+          classId: node.id,
+          toClassId: name,
         },
       });
     },

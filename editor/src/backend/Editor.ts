@@ -169,6 +169,12 @@ export class Editor {
       case "class-delete":
         this.filesManager.deleteClass(message.data.classId);
         break;
+      case "class-rename":
+        this.filesManager.renameClass(
+          message.data.classId,
+          message.data.toClassId
+        );
+        break;
       default:
         this.clientSocket?.send(JSON.stringify(message));
     }

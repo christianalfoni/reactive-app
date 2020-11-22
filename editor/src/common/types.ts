@@ -156,6 +156,13 @@ export type ClientMessage =
       data: {
         classId: string;
       };
+    }
+  | {
+      type: "class-rename";
+      data: {
+        classId: string;
+        toClassId: string;
+      };
     };
 
 export type ClassMetadata = { x: number; y: number };

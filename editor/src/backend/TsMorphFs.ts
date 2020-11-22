@@ -46,10 +46,8 @@ export class TsMorphFs implements FileSystemHost {
         }
       });
     });
-    return Promise.resolve(false);
   }
   directoryExistsSync(dirPath: string) {
-    console.log("UHM?", dirPath);
     return fs.existsSync(dirPath);
   }
   fileExists(srcPath: string) {

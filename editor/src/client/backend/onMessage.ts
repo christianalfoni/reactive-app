@@ -1,7 +1,71 @@
 import { action, observable } from "mobx";
 import { colors } from "../../common/design-tokens";
-import { Backend, BackendMessage } from "../../common/types";
+import {
+  Action,
+  Backend,
+  BackendMessage,
+  Computed,
+  Injector,
+  Mixin,
+  Observable,
+} from "../../common/types";
 import { IChart } from "../flow-chart/types/chart";
+
+function createClassNode({
+  classId,
+  x,
+  y,
+  mixins,
+  injectors,
+  observables,
+  computed,
+  actions,
+}: {
+  classId: string;
+  x: number;
+  y: number;
+  mixins: Mixin[];
+  injectors: Injector[];
+  observables: Observable[];
+  computed: Computed[];
+  actions: Action[];
+}) {
+  return observable({
+    id: classId,
+    type: "Class",
+    ports: {
+      input: {
+        id: "input",
+        type: "top",
+        properties: {
+          linkColor: colors.purple[500],
+        },
+      },
+      output: {
+        id: "output",
+        type: "bottom",
+        properties: {
+          linkColor: colors.purple[500],
+        },
+      },
+    },
+    position: {
+      x,
+      y,
+    },
+    properties: {
+      isEditing: false,
+      mixins,
+      name: classId,
+      injectors,
+      observables,
+      computed,
+      actions,
+      instances: observable({}),
+      currentInstanceId: null,
+    },
+  });
+}
 
 export const createOnMessage = (chart: IChart, backend: Backend) => {
   return (event: { data: any }) => {
@@ -39,34 +103,57 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
         break;
       }
       case "class-update": {
-        message.data.injectors.forEach((injector) => {
-          const id = `${injector.classId}_${injector.propertyName}`;
-          if (!chart.links[id] && injector.classId in chart.nodes) {
-            chart.links[id] = {
-              id,
-              from: {
-                portId: "output",
-                nodeId: injector.classId,
-              },
-              to: {
-                portId: "input",
-                nodeId: message.data.classId,
-              },
-            };
+        action(() => {
+          const {
+            classId,
+            x,
+            y,
+            injectors,
+            actions,
+            computed,
+            mixins,
+            observables,
+          } = message.data;
+
+          message.data.injectors.forEach((injector) => {
+            const id = `${injector.classId}_${injector.propertyName}`;
+            if (!chart.links[id] && injector.classId in chart.nodes) {
+              chart.links[id] = {
+                id,
+                from: {
+                  portId: "output",
+                  nodeId: injector.classId,
+                },
+                to: {
+                  portId: "input",
+                  nodeId: message.data.classId,
+                },
+              };
+            }
+          });
+
+          if (chart.nodes[message.data.classId]) {
+            chart.nodes[classId].properties.name = classId;
+            chart.nodes[classId].position.x = x;
+            chart.nodes[classId].position.y = y;
+            chart.nodes[classId].properties.injectors = injectors;
+            chart.nodes[classId].properties.observables = observables;
+            chart.nodes[classId].properties.actions = actions;
+            chart.nodes[classId].properties.computed = computed;
+            chart.nodes[classId].properties.mixins = mixins;
+          } else {
+            chart.nodes[message.data.classId] = createClassNode({
+              classId,
+              x,
+              y,
+              injectors,
+              actions,
+              computed,
+              mixins,
+              observables,
+            });
           }
-        });
-        chart.nodes[message.data.classId].position.x = message.data.x;
-        chart.nodes[message.data.classId].position.y = message.data.y;
-        chart.nodes[message.data.classId].properties.injectors =
-          message.data.injectors;
-        chart.nodes[message.data.classId].properties.observables =
-          message.data.observables;
-        chart.nodes[message.data.classId].properties.actions =
-          message.data.actions;
-        chart.nodes[message.data.classId].properties.computed =
-          message.data.computed;
-        chart.nodes[message.data.classId].properties.mixins =
-          message.data.mixins;
+        })();
         break;
       }
       case "classes": {
@@ -81,40 +168,15 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
             actions,
             mixins,
           } = message.data[key];
-          aggr[classId] = observable({
-            id: classId,
-            type: "Class",
-            ports: {
-              input: {
-                id: "input",
-                type: "top",
-                properties: {
-                  linkColor: colors.purple[500],
-                },
-              },
-              output: {
-                id: "output",
-                type: "bottom",
-                properties: {
-                  linkColor: colors.purple[500],
-                },
-              },
-            },
-            position: {
-              x,
-              y,
-            },
-            properties: {
-              isEditing: false,
-              mixins,
-              name: key,
-              injectors,
-              observables,
-              computed,
-              actions,
-              instances: observable({}),
-              currentInstanceId: null,
-            },
+          aggr[classId] = createClassNode({
+            classId,
+            x,
+            y,
+            injectors,
+            observables,
+            computed,
+            actions,
+            mixins,
           });
 
           return aggr;
