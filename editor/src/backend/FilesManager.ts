@@ -254,7 +254,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "inject");
     ast.addImportDeclaration(sourceFile, `./${fromClassId}`, fromClassId, true);
 
-    sourceFile.getClass(toClassId)?.addProperty({
+    sourceFile.getClass(toClassId)?.insertProperty(0, {
       name: fromClassId.toLocaleLowerCase(),
       hasDeclareKeyword: true,
       decorators: [
@@ -264,6 +264,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
         },
       ],
       type: fromClassId,
+      trailingTrivia: writeLineBreak,
     });
 
     sourceFile.saveSync();
