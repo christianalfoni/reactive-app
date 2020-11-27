@@ -11,11 +11,15 @@ interface ISidebarItemProps {
 
 const Outer = styled.div`
   padding: 20px 30px;
-  margin: ${space[4]};
+  margin: ${space[4]} auto;
   border-radius: 4px;
-  background-color: ${colors.gray[600]};
+  width: 200px;
+  text-align: center;
+  background-color: ${colors.purple[900]};
+  border: 1px dashed ${colors.purple[700]};
   color: ${colors.gray[200]};
-  font-size: 14px;
+  font-size: 18px;
+  font-weight: bold;
   cursor: move;
 `;
 

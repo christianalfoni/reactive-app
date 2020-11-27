@@ -115,7 +115,6 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
         >
           <NameInput
             placeholder="Name..."
-            autoFocus
             value={newName}
             onKeyDown={(event) => {
               event.stopPropagation();

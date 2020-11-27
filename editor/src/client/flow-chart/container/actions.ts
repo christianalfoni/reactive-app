@@ -320,7 +320,7 @@ export const onCanvasDrop: IStateCallback<IOnCanvasDrop> = ({
             x: Math.round(position.x / 20) * 20,
             y: Math.round(position.y / 20) * 20,
           }
-        : { x: position.x, y: position.y },
+        : { x: position.x - 100, y: position.y - 33 },
     orientation: data.orientation || 0,
     type: data.type,
     ports: data.ports,

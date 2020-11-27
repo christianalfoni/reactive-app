@@ -36,14 +36,15 @@ const InjectionWrapper = styled.div`
   }
 `;
 
-const InjectionSelector = styled.select`
+const InjectionLabel = styled.label`
+  color: ${colors.gray[500]};
+`;
+
+const InjectionSelector = styled.input`
   background-color: ${colors.gray[700]};
   color: ${colors.gray[200]};
-  margin-left: auto;
   border: 1px solid ${colors.gray[600]};
-  > option {
-    background-color: ${colors.gray[600]};
-  }
+  margin-left: auto;
 `;
 
 const InstanceWrapper = styled.div`
@@ -81,15 +82,14 @@ export const Injector = observer(
             : 0}
           )
           <InjectionSelector
+            type="checkbox"
             onClick={(event) => event.stopPropagation()}
-            value={injector.type}
+            checked={injector.type === "injectFactory"}
             onChange={() => {
               backend.actions.onToggleInjectorType(node, injector);
             }}
-          >
-            <option value="inject">singleton</option>
-            <option value="injectFactory">factory</option>
-          </InjectionSelector>
+          />
+          <InjectionLabel>factory</InjectionLabel>
         </InjectionWrapper>
         {isExpanded ? (
           <InstanceWrapper>

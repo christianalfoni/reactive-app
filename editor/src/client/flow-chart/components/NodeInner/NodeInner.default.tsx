@@ -4,10 +4,9 @@ import styled from "styled-components";
 import { IConfig, INode } from "../..";
 import { useBackend } from "../../../backend";
 import { HiCog, HiLink, HiOutlineEye } from "react-icons/hi";
-import { RiShareBoxLine } from "react-icons/ri";
 import { AiOutlineCode } from "react-icons/ai";
 import { BiCurrentLocation } from "react-icons/bi";
-import { colors } from "../../../../common/design-tokens";
+import { colors, space } from "../../../../common/design-tokens";
 import { Mixin } from "../../../../common/types";
 
 export interface INodeInnerDefaultProps {
@@ -55,12 +54,10 @@ const NumberValue = styled.span`
   color: ${colors.blue[400]};
 `;
 
-const NameChangeForm = styled.form`
-  margin-bottom: 1rem;
-`;
+const NameChangeForm = styled.form``;
 
 const Name = styled.h3`
-  margin-top: 0;
+  margin: 0;
 `;
 
 const Type = styled.div`
@@ -69,9 +66,11 @@ const Type = styled.div`
   color: ${colors.purple[400]};
 `;
 
-const EditValue = styled(RiShareBoxLine)<{ disabled?: boolean }>((props) =>
-  props.disabled ? `opacity: 0.5;` : `cursor: pointer;`
-);
+const PropsWrapper = styled.div`
+  > :first-child {
+    margin-top: ${space[4]};
+  }
+`;
 
 const NameInput = styled.input`
   outline: none;
@@ -170,7 +169,7 @@ export const NodeInnerDefault = observer(
             <CurrentStateIcon />
           </Property>
         ) : null}
-        <div>
+        <PropsWrapper>
           {node.properties.injectors.map((injector) => {
             return (
               <Property key={injector.propertyName}>
@@ -238,7 +237,7 @@ export const NodeInnerDefault = observer(
               </Property>
             );
           })}
-        </div>
+        </PropsWrapper>
       </Outer>
     );
   }
