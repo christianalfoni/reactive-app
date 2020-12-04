@@ -43,6 +43,7 @@ const IOC_CONTAINER = Symbol("IOC_CONTAINER");
 export class Container<T extends IContainerConfig> implements IContainer<T> {
   private _classes = new Map<keyof T, any>();
   private _singletons = new Map<keyof T, any>();
+  private _factoryInstances = new Map<keyof T, any[]>();
   private _devtool: IDevtool | undefined;
   private _currentClassId = 1;
 
@@ -114,8 +115,50 @@ export class Container<T extends IContainerConfig> implements IContainer<T> {
     ? (...args: ConstructorParameters<T[U]>) => O
     : never {
     return ((...args: any[]) => {
-      return this.get(id, ...args);
+      const instance = this.get(id, ...args) as any;
+
+      // If development
+      const factoryInstances =
+        this._factoryInstances.get(id) ||
+        this._factoryInstances.set(id, []).get(id)!;
+
+      factoryInstances.push(instance);
+
+      if (instance.onDispose) {
+        instance.onDispose(() =>
+          factoryInstances.splice(factoryInstances.indexOf(instance), 1)
+        );
+      }
+
+      return instance;
     }) as any;
+  }
+  hotReload(newClass: any) {
+    const id = newClass.name;
+    const singleton = this._singletons.get(id);
+    const factoryInstances = this._factoryInstances.get(id);
+    const instances = singleton ? [singleton] : factoryInstances;
+
+    instances?.forEach((instance) => {
+      Object.getOwnPropertyNames(newClass.prototype).forEach((key) => {
+        const propertyDescriptor = Object.getOwnPropertyDescriptor(
+          newClass.prototype,
+          key
+        );
+
+        if (
+          propertyDescriptor?.writable &&
+          typeof newClass.prototype[key] === "function" &&
+          key !== "constructor"
+        ) {
+          instance[key] = newClass.prototype[key];
+        }
+      });
+
+      if (instance.hotReloadUI) {
+        instance.hotReloadUI();
+      }
+    });
   }
 }
 

@@ -2,9 +2,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as prettier from "prettier";
-import * as ts from "typescript";
-
 import { Project } from "ts-morph";
+import * as ts from "typescript";
 
 import {
   APP_DIR,
@@ -69,10 +68,15 @@ export class FilesManager {
   private getAppSourceFile(fileName: string) {
     const fullPath = path.resolve(APP_DIR, `${fileName}.ts`);
 
-    return (
-      this.project.getSourceFile(fullPath) ||
-      this.project.addSourceFileAtPath(fullPath)
-    );
+    const sourceFile = this.project.getSourceFile(fullPath);
+
+    if (sourceFile) {
+      sourceFile.refreshFromFileSystemSync();
+
+      return sourceFile;
+    }
+
+    return this.project.addSourceFileAtPath(fullPath);
   }
 
   private async ensureConfigurationDir() {
@@ -327,6 +331,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     ast.addImportDeclaration(sourceFile, MIXINS_IMPORT, "applyMixins");
 
     switch (mixin) {
+      case "UI":
       case "Resolver":
       case "Disposable":
         ast.toggleImportDeclaration(sourceFile, MIXINS_IMPORT, mixin);

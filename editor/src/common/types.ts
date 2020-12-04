@@ -72,6 +72,7 @@ export enum Mixin {
   Disposable = "Disposable",
   Resolver = "Resolver",
   StateMachine = "StateMachine",
+  UI = "UI",
 }
 
 export type ClassNodeProperties = {

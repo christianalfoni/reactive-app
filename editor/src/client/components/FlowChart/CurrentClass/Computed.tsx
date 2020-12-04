@@ -15,6 +15,7 @@ const CurrentValueContainer = styled.div`
 const ComputedWrapper = styled.div`
   display: flex;
   align-items: center;
+  margin-bottom: ${space[2]};
 `;
 
 const ComputedIcon = styled(HiCog)`

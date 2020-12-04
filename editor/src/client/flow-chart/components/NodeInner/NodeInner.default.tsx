@@ -1,13 +1,14 @@
 import { observer } from "mobx-react";
 import * as React from "react";
-import styled from "styled-components";
-import { IConfig, INode } from "../..";
-import { useBackend } from "../../../backend";
-import { HiCog, HiLink, HiOutlineEye } from "react-icons/hi";
 import { AiOutlineCode } from "react-icons/ai";
 import { BiCurrentLocation } from "react-icons/bi";
+import { HiCog, HiLink, HiOutlineEye } from "react-icons/hi";
+import styled from "styled-components";
+
 import { colors, space } from "../../../../common/design-tokens";
 import { Mixin } from "../../../../common/types";
+import { useBackend } from "../../../backend";
+import { IConfig, INode } from "../..";
 
 export interface INodeInnerDefaultProps {
   className?: string;
@@ -70,6 +71,10 @@ const PropsWrapper = styled.div`
   > :first-child {
     margin-top: ${space[4]};
   }
+`;
+
+const StateProperty = styled(Property)`
+  margin-top: ${space[2]};
 `;
 
 const NameInput = styled.input`
@@ -158,16 +163,16 @@ export const NodeInnerDefault = observer(
         {node.properties.mixins.includes(Mixin.StateMachine) &&
         instanceId &&
         node.properties.instances[instanceId].values.state ? (
-          <Property>
+          <StateProperty>
             <CurrentStateIcon />
             <CurrentState>
               {node.properties.instances[instanceId].values.state.current}
             </CurrentState>
-          </Property>
+          </StateProperty>
         ) : node.properties.mixins.includes(Mixin.StateMachine) ? (
-          <Property>
+          <StateProperty>
             <CurrentStateIcon />
-          </Property>
+          </StateProperty>
         ) : null}
         <PropsWrapper>
           {node.properties.injectors.map((injector) => {
