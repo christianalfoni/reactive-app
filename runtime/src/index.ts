@@ -125,9 +125,13 @@ export class Container<T extends IContainerConfig> implements IContainer<T> {
       factoryInstances.push(instance);
 
       if (instance.onDispose) {
-        instance.onDispose(() =>
-          factoryInstances.splice(factoryInstances.indexOf(instance), 1)
-        );
+        instance.onDispose(() => {
+          factoryInstances.splice(factoryInstances.indexOf(instance), 1);
+          this._devtool?.sendDispose({
+            instanceId: instance[INSTANCE_ID],
+            classId: id as string,
+          });
+        });
       }
 
       return instance;

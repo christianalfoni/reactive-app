@@ -25,6 +25,10 @@ export class Disposable {
   [DISPOSABLES]: DisposableValue[];
   [IS_DISPOSED]: boolean;
 
+  isDisposed() {
+    return Boolean(this[IS_DISPOSED]);
+  }
+
   onDispose(disposable: DisposableValue) {
     if (!this[DISPOSABLES]) {
       this[DISPOSABLES] = [];
@@ -61,7 +65,7 @@ export class Resolver {
   [IS_DISPOSED]: boolean;
   resolve<T>(
     promise: Promise<T>,
-    resolvers: {
+    resolvers?: {
       rejected: (error: Error) => void;
       resolved: (data: T) => void;
     }
@@ -69,13 +73,14 @@ export class Resolver {
     return promise
       .then((data) => {
         if (this[IS_DISPOSED]) {
-          console.warn(
-            `${this.constructor.name} resolved async, but is disposed`
-          );
-          return;
+          throw new Error("Disposed");
         }
 
-        return action(resolvers.resolved)(data);
+        if (resolvers) {
+          return action(resolvers.resolved)(data);
+        }
+
+        return data;
       })
       .catch((error) => {
         if (this[IS_DISPOSED]) {
@@ -85,7 +90,11 @@ export class Resolver {
           return;
         }
 
-        return action(resolvers.rejected)(error);
+        if (resolvers) {
+          return action(resolvers.rejected)(error);
+        }
+
+        throw new Error("Disposed");
       });
   }
 }
@@ -395,7 +404,12 @@ export class UI {
     const parents = this[UI_SELECTORS].map((selector) => selector.dispose());
     const parent = parents.find((parent) => Boolean(parent?.parentNode));
 
-    // @ts-ignore
-    this.render().appendTo(parent);
+    try {
+      // @ts-ignore
+      this.render().appendTo(parent);
+    } catch (error) {
+      console.error("Unable to hot reload due to error in render");
+      throw error;
+    }
   }
 }

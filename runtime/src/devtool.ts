@@ -16,6 +16,7 @@ export interface IDevtool {
     instanceId: number;
     classId: string;
   }): void;
+  sendDispose(data: { instanceId: number; classId: string }): void;
 }
 
 export type TDebugMessage = (
@@ -45,6 +46,13 @@ export type TDebugMessage = (
         propertyName: string;
         injectClassId: string;
         injectInstanceId: number;
+      };
+    }
+  | {
+      type: "dispose";
+      data: {
+        classId: string;
+        instanceId: number;
       };
     }
   | {
@@ -197,6 +205,10 @@ export class Devtool implements IDevtool {
   };
 
   private send = (message: TDebugMessage) => {
+    if (this.ws.readyState === this.ws.CLOSED) {
+      return;
+    }
+
     try {
       this.stringifyAndSend(message);
     } catch {
@@ -271,6 +283,12 @@ export class Devtool implements IDevtool {
   }) {
     this.send({
       type: "injection",
+      data,
+    });
+  }
+  sendDispose(data: { classId: string; instanceId: number }) {
+    this.send({
+      type: "dispose",
       data,
     });
   }
