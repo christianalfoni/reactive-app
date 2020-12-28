@@ -199,9 +199,6 @@ export const onLinkClick: IStateCallback<IOnLinkClick> = ({ linkId }) => (
 export const onCanvasClick: IStateCallback<IOnCanvasClick> = () => (
   chart: IChart
 ) => {
-  if (chart.selected.id) {
-    chart.selected = {};
-  }
   return chart;
 };
 

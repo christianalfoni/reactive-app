@@ -202,13 +202,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     const file = path.resolve(APP_DIR, classId + ".ts")!;
 
     await this.writeClassToEntryFile(classId);
-    await this.writePrettyFile(
-      file,
-      `export interface ${classId} {}
-
-export class ${classId} {}    
-`
-    );
+    await this.writePrettyFile(file, `export class ${classId} {}`);
   }
 
   private async writeClassToEntryFile(classId: string) {

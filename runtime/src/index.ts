@@ -237,3 +237,40 @@ export function inject(classKey: string): any {
     };
   };
 }
+
+type ExtractMethods<T extends any> = {
+  [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never;
+}[keyof T];
+
+interface MockMethods<T extends any> {
+  new (...args: any[]): T;
+  mockMethod<M extends ExtractMethods<T>>(
+    name: M,
+    method: (...params: Parameters<T[M]>) => ReturnType<T[M]>
+  ): void;
+}
+
+export function mock<T extends IClass<any>>(
+  clas: T
+): T & T extends IClass<infer U> ? MockMethods<U> : never {
+  const methodMocks: any = {};
+
+  function mockMethod(name: string, method: Function) {
+    methodMocks[name] = method;
+  }
+
+  return new Proxy(clas, {
+    construct(target, args) {
+      const instance = new target(...args);
+      Object.assign(instance, methodMocks);
+      return instance;
+    },
+    get(target, key) {
+      if (key === "mockMethod") {
+        return mockMethod;
+      }
+
+      return Reflect.get(target, key);
+    },
+  }) as any;
+}
