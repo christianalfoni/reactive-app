@@ -15,8 +15,8 @@ const Outer = styled.div`
   border-radius: 4px;
   width: 200px;
   text-align: center;
-  background-color: ${colors.orange[700]};
-  border: 1px dashed ${colors.orange[500]};
+  background-color: ${colors.green[700]};
+  border: 1px dashed ${colors.green[500]};
   color: ${colors.gray[200]};
   font-size: 18px;
   font-weight: bold;

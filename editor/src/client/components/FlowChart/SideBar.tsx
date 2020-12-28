@@ -34,7 +34,7 @@ export const SideBar = observer(() => {
   return (
     <Sidebar>
       <ClassItem
-        type="Class"
+        type="New Feature"
         ports={{
           input: {
             id: "input",
