@@ -4,7 +4,7 @@ import { HiCog } from "react-icons/hi";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
-import { ClassInstance, Computed as TComputed } from "../../../../common/types";
+import { ClassInstance, Property } from "../../../../common/types";
 import ValueInspector from "../../ValueInspector";
 
 const CurrentValueContainer = styled.div`
@@ -25,22 +25,22 @@ const ComputedIcon = styled(HiCog)`
 
 export const Computed = observer(
   ({
-    computed,
+    property,
     instance,
   }: {
-    computed: TComputed;
+    property: Property;
     instance: ClassInstance | null;
   }) => {
     return (
       <ComputedWrapper>
         <ComputedIcon />
-        {computed.name}
+        {property.name}
         <div>
           <CurrentValueContainer>
-            {instance && computed.name in instance.values ? (
+            {instance && property.name in instance.values ? (
               <ValueInspector
                 small
-                value={instance.values[computed.name]}
+                value={instance.values[property.name]}
                 delimiter="."
               />
             ) : null}

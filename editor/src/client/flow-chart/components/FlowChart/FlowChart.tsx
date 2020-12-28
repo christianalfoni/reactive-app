@@ -143,7 +143,7 @@ export const FlowChart = observer((props: IFlowChartProps) => {
     } = {},
     config = {},
   } = props;
-  const { links, nodes, selected, hovered, offset, scale } = chart;
+  const { links, nodes, selected, hovered } = chart;
 
   const canvasCallbacks = {
     onDragCanvas,
@@ -171,7 +171,7 @@ export const FlowChart = observer((props: IFlowChartProps) => {
     onLinkCancel,
   };
 
-  const nodesInView = Object.keys(nodes).filter((nodeId) => {
+  const nodesInView = Object.keys(nodes)/*.filter((nodeId) => {
     const defaultNodeSize = { width: 500, height: 500 };
 
     const { x, y } = nodes[nodeId].position;
@@ -182,7 +182,7 @@ export const FlowChart = observer((props: IFlowChartProps) => {
     const isTooFarUp = scale * y + offset.y + scale * size.height < 0;
     const isTooFarDown = scale * y + offset.y > canvasSize.height;
     return !(isTooFarLeft || isTooFarRight || isTooFarUp || isTooFarDown);
-  });
+  });*/
 
   const matrix = config.smartRouting
     ? getMatrix(
@@ -191,7 +191,7 @@ export const FlowChart = observer((props: IFlowChartProps) => {
       )
     : undefined;
 
-  const linksInView = Object.keys(links).filter((linkId) => {
+  const linksInView = Object.keys(links)/*.filter((linkId) => {
     const from = links[linkId].from;
     const to = links[linkId].to;
 
@@ -200,7 +200,8 @@ export const FlowChart = observer((props: IFlowChartProps) => {
       nodesInView.indexOf(from.nodeId) !== -1 ||
       nodesInView.indexOf(to.nodeId) !== -1
     );
-  });
+  })*/
+
 
   return (
     <CanvasWrapper

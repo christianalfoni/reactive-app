@@ -1,13 +1,12 @@
 import { action, observable } from "mobx";
 import { colors } from "../../common/design-tokens";
 import {
-  Action,
+  Property,
   Backend,
   BackendMessage,
-  Computed,
+  Method,
   Injector,
   Mixin,
-  Observable,
 } from "../../common/types";
 import { IChart } from "../flow-chart/types/chart";
 
@@ -17,18 +16,16 @@ function createClassNode({
   y,
   mixins,
   injectors,
-  observables,
-  computed,
-  actions,
+  properties,
+  methods,
 }: {
   classId: string;
   x: number;
   y: number;
   mixins: Mixin[];
   injectors: Injector[];
-  observables: Observable[];
-  computed: Computed[];
-  actions: Action[];
+  properties: Property[];
+  methods: Method[];
 }) {
   return observable({
     id: classId,
@@ -58,9 +55,8 @@ function createClassNode({
       mixins,
       name: classId,
       injectors,
-      observables,
-      computed,
-      actions,
+      properties,
+      methods,
       instances: observable({}),
       currentInstanceId: null,
     },
@@ -109,10 +105,9 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
             x,
             y,
             injectors,
-            actions,
-            computed,
+            methods,
+            properties,
             mixins,
-            observables,
           } = message.data;
 
           message.data.injectors.forEach((injector) => {
@@ -137,9 +132,8 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
             chart.nodes[classId].position.x = x;
             chart.nodes[classId].position.y = y;
             chart.nodes[classId].properties.injectors = injectors;
-            chart.nodes[classId].properties.observables = observables;
-            chart.nodes[classId].properties.actions = actions;
-            chart.nodes[classId].properties.computed = computed;
+            chart.nodes[classId].properties.methods = methods;
+            chart.nodes[classId].properties.properties = properties;
             chart.nodes[classId].properties.mixins = mixins;
           } else {
             chart.nodes[message.data.classId] = createClassNode({
@@ -147,10 +141,9 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
               x,
               y,
               injectors,
-              actions,
-              computed,
+              methods,
+              properties,
               mixins,
-              observables,
             });
           }
         })();
@@ -163,9 +156,8 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
             x,
             y,
             injectors,
-            observables,
-            computed,
-            actions,
+            properties,
+            methods,
             mixins,
           } = message.data[key];
           aggr[classId] = createClassNode({
@@ -173,9 +165,8 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
             x,
             y,
             injectors,
-            observables,
-            computed,
-            actions,
+            properties,
+            methods,
             mixins,
           });
 

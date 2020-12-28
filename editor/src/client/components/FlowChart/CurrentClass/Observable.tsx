@@ -6,7 +6,7 @@ import styled from "styled-components";
 import { colors, space } from "../../../../common/design-tokens";
 import {
   ClassInstance,
-  Observable as TObservable,
+  Property
 } from "../../../../common/types";
 import ValueInspector from "../../ValueInspector";
 
@@ -28,22 +28,22 @@ const ObservableIcon = styled(HiOutlineEye)`
 
 export const Observable = observer(
   ({
-    observable,
+    property,
     instance,
   }: {
-    observable: TObservable;
+    property: Property;
     instance: ClassInstance | null;
   }) => {
     return (
       <ObservableWrapper>
         <ObservableIcon />
-        {observable.name}
+        {property.name}
         <div>
           <EditCurrentValueContainer>
-            {instance && observable.name in instance.values ? (
+            {instance && property.name in instance.values ? (
               <ValueInspector
                 small
-                value={instance.values[observable.name]}
+                value={instance.values[property.name]}
                 delimiter="."
               />
             ) : null}

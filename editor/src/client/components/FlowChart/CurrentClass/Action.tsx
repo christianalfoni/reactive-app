@@ -5,7 +5,7 @@ import { RiArrowDownSLine, RiArrowRightSLine } from "react-icons/ri";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
-import { ClassInstance, Action as TAction } from "../../../../common/types";
+import { ClassInstance, Method } from "../../../../common/types";
 import { useBackend } from "../../../backend";
 import ValueInspector from "../../ValueInspector";
 
@@ -59,7 +59,7 @@ export const Action = observer(
     instance,
     runAction,
   }: {
-    action: TAction;
+    action: Method;
     instanceId: number | null;
     instance: ClassInstance | null;
     runAction: (instanceId: number, name: string) => void;

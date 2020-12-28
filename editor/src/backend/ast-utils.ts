@@ -3,11 +3,12 @@ import {
   SourceFile,
   ArrayLiteralExpression,
   ExpressionStatement,
+  InterfaceDeclaration,
+  StringLiteral,
 } from "ts-morph";
 import * as ts from "typescript";
-import { MIXINS_IMPORT } from "../common/constants";
 
-import { Action, Computed, Injector, Mixin, Observable } from "../common/types";
+import { Property, Method, Injector, Mixin } from "../common/types";
 import { writeLineBreak } from "./TsMorphFs";
 
 export function getClassNode(
@@ -71,8 +72,7 @@ export function getInjectors(node: ts.ClassDeclaration): Injector[] {
         const identifier = callExpression.expression;
 
         if (
-          (identifier.text === "inject" ||
-            identifier.text === "injectFactory") &&
+          identifier.text === "inject" &&
           callExpression.arguments[0] &&
           ts.isStringLiteral(callExpression.arguments[0])
         ) {
@@ -81,7 +81,6 @@ export function getInjectors(node: ts.ClassDeclaration): Injector[] {
           return aggr.concat({
             classId: stringLiteral.text,
             propertyName: (member.name as ts.Identifier).text,
-            type: identifier.text,
           });
         }
       }
@@ -91,57 +90,76 @@ export function getInjectors(node: ts.ClassDeclaration): Injector[] {
   }, []);
 }
 
-export function getObservables(node: ts.ClassDeclaration) {
-  return node.members.reduce<Observable[]>((aggr, member) => {
+export function getProperties(node: ts.ClassDeclaration) {
+  return node.members.reduce<Property[]>((aggr, member) => {
     if (ts.isPropertyDeclaration(member)) {
+      if (
+        member.modifiers &&
+        member.modifiers.find(
+          (modifier) =>
+            modifier.kind === ts.SyntaxKind.PrivateKeyword ||
+            modifier.kind === ts.SyntaxKind.DeclareKeyword ||
+            modifier.kind === ts.SyntaxKind.StaticKeyword
+        )
+      ) {
+        return aggr;
+      }
+
       const identifier =
         member.decorators && ts.isIdentifier(member.decorators[0].expression)
           ? member.decorators[0].expression
           : undefined;
+
+      const name = (member.name as ts.Identifier).text;
 
       if (identifier && identifier.text === "observable") {
         return aggr.concat({
-          name: (member.name as ts.Identifier).text,
+          name,
+          type: "observable",
         });
       }
-    }
-
-    return aggr;
-  }, []);
-}
-
-export function getComputed(node: ts.ClassDeclaration) {
-  return node.members.reduce<Computed[]>((aggr, member) => {
-    if (ts.isGetAccessor(member)) {
-      const identifier =
-        member.decorators && ts.isIdentifier(member.decorators[0].expression)
-          ? member.decorators[0].expression
-          : undefined;
 
       if (identifier && identifier.text === "computed") {
         return aggr.concat({
-          name: (member.name as ts.Identifier).text,
+          name,
+          type: "computed",
         });
       }
+
+      return aggr.concat({ name });
     }
 
     return aggr;
   }, []);
 }
 
-export function getActions(node: ts.ClassDeclaration) {
-  return node.members.reduce<Action[]>((aggr, member) => {
+export function getMethods(node: ts.ClassDeclaration) {
+  return node.members.reduce<Method[]>((aggr, member) => {
     if (ts.isMethodDeclaration(member)) {
+      if (
+        member.modifiers &&
+        member.modifiers.find(
+          (modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword
+        )
+      ) {
+        return aggr;
+      }
+
       const identifier =
         member.decorators && ts.isIdentifier(member.decorators[0].expression)
           ? member.decorators[0].expression
           : undefined;
 
+      const name = (member.name as ts.Identifier).text;
+
       if (identifier && identifier.text === "action") {
         return aggr.concat({
-          name: (member.name as ts.Identifier).text,
+          name,
+          type: "action",
         });
       }
+
+      return aggr.concat({ name });
     }
 
     return aggr;
@@ -239,9 +257,10 @@ export function toggleMixinInterface(
   type: string
 ) {
   const mixinInterface = sourceFile.getInterface(interfaceName);
+  const classNode = sourceFile.getClass(interfaceName)!;
 
   if (!mixinInterface) {
-    sourceFile.addInterface({
+    sourceFile.insertInterface(classNode.getChildIndex(), {
       name: interfaceName,
       extends: [type],
       isExported: true,
@@ -255,9 +274,7 @@ export function toggleMixinInterface(
     .findIndex((typeArgument) => typeArgument.getText().match(type));
   const hasMixin = mixinTypeIndex >= 0;
 
-  if (hasMixin && mixinInterface.getExtends().length === 1) {
-    mixinInterface.remove();
-  } else if (hasMixin) {
+  if (hasMixin) {
     mixinInterface.removeExtends(mixinTypeIndex);
   } else {
     mixinInterface.addExtends([type]);
@@ -269,38 +286,29 @@ export function toggleMixin(
   target: string,
   mixin: string
 ) {
-  const callExpression = sourceFile.getStatement((statement) => {
-    if (statement.getKind() === ts.SyntaxKind.ExpressionStatement) {
-      const callExpression = statement.getFirstDescendantByKind(
-        ts.SyntaxKind.CallExpression
-      );
+  const classNode = sourceFile.getClass(target)!;
+  const mixins = classNode?.getProperty("mixins");
 
-      if (
-        callExpression &&
-        callExpression.getExpression().getText() === "applyMixins"
-      ) {
-        return true;
-      }
+  if (mixins) {
+    const initializer = mixins.getInitializer() as ArrayLiteralExpression;
+    const elements = initializer.getElements() as StringLiteral[];
+    const mixinElement = `"${mixin}"`;
+    const mixinIndex = elements.findIndex(
+      (element) => element.getText() === mixinElement
+    );
+
+    if (elements.length === 1 && mixinIndex > -1) {
+      mixins.remove();
+    } else if (mixinIndex > -1) {
+      initializer.removeElement(mixinIndex);
+    } else {
+      initializer.addElement(mixinElement);
     }
-
-    return false;
-  }) as ExpressionStatement | undefined;
-  const args = callExpression
-    ? ((callExpression.getExpression() as CallExpression).getArguments()[1] as ArrayLiteralExpression)
-    : undefined;
-  const mixinIndex = args
-    ? args.getElements().findIndex((element) => element.getText() === mixin)
-    : -1;
-
-  if (args && mixinIndex >= 0) {
-    args.removeElement(mixinIndex);
-    if (args.getElements().length === 0) {
-      callExpression?.remove();
-      removeImportDeclaration(sourceFile, MIXINS_IMPORT);
-    }
-  } else if (args) {
-    args.addElement(mixin);
   } else {
-    sourceFile.addStatements([`applyMixins(${target}, [${mixin}])`]);
+    classNode.insertProperty(0, {
+      name: "mixins",
+      isStatic: true,
+      initializer: `["${mixin}"]`,
+    });
   }
 }

@@ -12,7 +12,6 @@ export type ClientBackend = {
     onInstanceClick(classId: string, instanceId: number): void;
     onClassSubmit(node: INode, name: string): void;
     onClassRenameSubmit(node: INode, name: string): void;
-    onToggleInjectorType(node: INode, injector: Injector): void;
     onOpenClass(classId: string): void;
     onRunAction(instanceId: number, name: string): void;
     onToggleMixin(classId: string, mixin: Mixin): void;
@@ -32,6 +31,7 @@ export const chart: IChart = observable({
   links: {},
   selected: {},
   hovered: {},
+  state: 'idle'
 });
 
 let isConnected = false;
@@ -101,6 +101,7 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
       data: {
         fromClassId: fromId,
         toClassId: toId,
+        asFactory: chart.nodes[fromId].properties.mixins.includes(Mixin.Factory)
       },
     });
   }) as typeof actions.onLinkComplete,
@@ -171,17 +172,6 @@ const backend = observable<ClientBackend>({
         data: {
           classId: node.id,
           toClassId: name,
-        },
-      });
-    },
-    onToggleInjectorType(node, injector) {
-      send({
-        type: "inject-replace",
-        data: {
-          classId: node.id,
-          injectClassId: injector.classId,
-          propertyName: injector.propertyName,
-          injectorType: injector.type === "inject" ? "injectFactory" : "inject",
         },
       });
     },

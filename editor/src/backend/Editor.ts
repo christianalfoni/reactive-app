@@ -143,15 +143,6 @@ export class Editor {
         this.filesManager.inject(message.data);
         break;
       }
-      case "inject-replace": {
-        this.filesManager.replaceInjection(
-          message.data.classId,
-          message.data.injectClassId,
-          message.data.propertyName,
-          message.data.injectorType
-        );
-        break;
-      }
       case "inject-remove": {
         this.filesManager.removeInjection(
           message.data.fromClassId,

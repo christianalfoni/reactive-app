@@ -8,10 +8,11 @@ const BrowserWindow = electron.BrowserWindow;
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     webPreferences: {
-      nodeIntegration: true,
+      contextIsolation: true
     },
     icon: path.resolve("icons", "icon.png"),
     height: 768,
@@ -113,7 +114,7 @@ function createWindow() {
       mainWindow.loadURL(`http://localhost:5050?port=${port}`);
       mainWindow.webContents.openDevTools();
     }
-  });
+  }).catch(console.log);
 }
 
 // This method will be called when Electron has finished

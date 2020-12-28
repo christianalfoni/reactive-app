@@ -8,9 +8,11 @@ import { colors, space } from "../../../../common/design-tokens";
 import { Mixin } from "../../../../common/types";
 import { useBackend } from "../../../backend";
 import { Action } from "./Action";
+import { Method } from "./Method";
 import { Computed } from "./Computed";
 import { Injector } from "./Injector";
 import { Observable } from "./Observable";
+import { Property } from "./Property";
 
 const Wrapper = styled.div`
   padding: ${space[2]} ${space[4]};
@@ -211,33 +213,58 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
         ))}
       </div>
       <div>
-        {node.properties.observables.map((observable) => (
-          <Observable
-            key={observable.name}
-            observable={observable}
-            instance={instance}
-          />
-        ))}
+        {node.properties.properties.map((property) => {
+          if (!property.type) {
+            return (
+              <Property
+                key={property.name}
+                property={property}
+              />
+            )
+          }
+
+          if (property.type === 'observable') {
+            return (
+              <Observable
+                key={property.name}
+                property={property}
+                instance={instance}
+              />
+            )
+          }
+
+          if (property.type === 'computed') {
+            return (
+              <Computed
+                key={property.name}
+                property={property}
+                instance={instance}
+              />
+            )
+          }
+        })}
       </div>
       <div>
-        {node.properties.computed.map((computed) => (
-          <Computed
-            key={computed.name}
-            computed={computed}
-            instance={instance}
-          />
-        ))}
-      </div>
-      <div>
-        {node.properties.actions.map((action) => (
-          <Action
-            key={action.name}
-            action={action}
-            runAction={backend.actions.onRunAction}
-            instanceId={node.properties.currentInstanceId}
-            instance={instance}
-          />
-        ))}
+        {node.properties.methods.map((method) => {
+          if (!method.type) {
+            return (
+              <Method
+                key={method.name}
+                method={method}
+              />
+            )
+          }
+
+          return (
+            <Action
+              key={method.name}
+              action={method}
+              runAction={backend.actions.onRunAction}
+              instanceId={node.properties.currentInstanceId}
+              instance={instance}
+            />
+          )
+        })}
       </div>
     </Wrapper>
   );

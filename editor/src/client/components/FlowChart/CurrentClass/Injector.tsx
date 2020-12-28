@@ -36,17 +36,6 @@ const InjectionWrapper = styled.div`
   }
 `;
 
-const InjectionLabel = styled.label`
-  color: ${colors.gray[500]};
-`;
-
-const InjectionSelector = styled.input`
-  background-color: ${colors.gray[700]};
-  color: ${colors.gray[200]};
-  border: 1px solid ${colors.gray[600]};
-  margin-left: auto;
-`;
-
 const InstanceWrapper = styled.div`
   cursor: pointer;
 `;
@@ -81,15 +70,6 @@ export const Injector = observer(
             ? instance.injections[injector.propertyName].length
             : 0}
           )
-          <InjectionSelector
-            type="checkbox"
-            onClick={(event) => event.stopPropagation()}
-            checked={injector.type === "injectFactory"}
-            onChange={() => {
-              backend.actions.onToggleInjectorType(node, injector);
-            }}
-          />
-          <InjectionLabel>factory</InjectionLabel>
         </InjectionWrapper>
         {isExpanded ? (
           <InstanceWrapper>

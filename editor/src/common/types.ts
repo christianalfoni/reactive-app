@@ -21,15 +21,16 @@ export type PackageJson = {
 export type Injector = {
   classId: string;
   propertyName: string;
-  type: "inject" | "injectFactory";
 };
 
-export type Observable = {
+export type Property = {
   name: string;
+  type?: "observable" | "computed";
 };
 
-export type Computed = {
+export type Method = {
   name: string;
+  type?: "action";
 };
 
 export type ActionExecution = {
@@ -37,17 +38,12 @@ export type ActionExecution = {
   time: number;
 };
 
-export type Action = {
-  name: string;
-};
-
 export type ExtractedClass = {
   classId: string;
   mixins: Mixin[];
   injectors: Injector[];
-  observables: Observable[];
-  computed: Computed[];
-  actions: Action[];
+  properties: Property[];
+  methods: Method[];
 };
 
 export type Class = {
@@ -69,10 +65,10 @@ export type ClassInstance = {
 };
 
 export enum Mixin {
-  Disposable = "Disposable",
-  Resolver = "Resolver",
+  Factory = "Factory",
   StateMachine = "StateMachine",
-  UI = "UI",
+  View = "View",
+  EventHub = "EventHub",
 }
 
 export type ClassNodeProperties = {
@@ -81,9 +77,8 @@ export type ClassNodeProperties = {
   isEditing: boolean;
   currentInstanceId: number | null;
   injectors: Injector[];
-  observables: Observable[];
-  computed: Computed[];
-  actions: Action[];
+  properties: Property[];
+  methods: Method[];
   instances: {
     [id: string]: ClassInstance;
   };
@@ -114,15 +109,7 @@ export type ClientMessage =
       data: {
         fromClassId: string;
         toClassId: string;
-      };
-    }
-  | {
-      type: "inject-replace";
-      data: {
-        classId: string;
-        injectClassId: string;
-        propertyName: string;
-        injectorType: "inject" | "injectFactory";
+        asFactory: boolean;
       };
     }
   | {

@@ -77,12 +77,22 @@ export const onDragNodeStop: IStateCallback<IOnDragNodeStop> = () => identity;
 export const onDragCanvas: IOnDragCanvas = ({ config, data }) => (
   chart: IChart
 ): IChart => {
-  chart.offset = getOffset(config, { x: data.positionX, y: data.positionY });
+  chart.state = "panning";
+  const newOffset = getOffset(config, { x: data.positionX, y: data.positionY });
+
+  chart.offset.x = newOffset.x;
+  chart.offset.y = newOffset.y;
+
   return chart;
 };
 
-export const onDragCanvasStop: IStateCallback<IOnDragCanvasStop> = () =>
-  identity;
+export const onDragCanvasStop: IStateCallback<IOnDragCanvasStop> = () => (
+  chart: IChart
+): IChart => {
+  chart.state = "idle";
+
+  return chart;
+};
 
 export const onLinkStart: IStateCallback<IOnLinkStart> = ({
   linkId,
@@ -147,6 +157,10 @@ export const onLinkCancel: IStateCallback<IOnLinkCancel> = ({ linkId }) => (
 export const onLinkMouseEnter: IStateCallback<IOnLinkMouseEnter> = ({
   linkId,
 }) => (chart: IChart) => {
+  if (chart.state === "panning" || chart.state === "zooming") {
+    return chart;
+  }
+
   // Set the link to hover
   const link = chart.links[linkId];
   // Set the connected ports to hover
@@ -164,6 +178,10 @@ export const onLinkMouseEnter: IStateCallback<IOnLinkMouseEnter> = ({
 export const onLinkMouseLeave: IStateCallback<IOnLinkMouseLeave> = ({
   linkId,
 }) => (chart: IChart) => {
+  if (chart.state === "panning" || chart.state === "zooming") {
+    return chart;
+  }
+
   const link = chart.links[linkId];
   // Set the connected ports to hover
   if (link.to.nodeId && link.to.portId) {
@@ -190,6 +208,10 @@ export const onCanvasClick: IStateCallback<IOnCanvasClick> = () => (
 export const onNodeMouseEnter: IStateCallback<IOnNodeMouseEnter> = ({
   nodeId,
 }) => (chart: IChart) => {
+  if (chart.state === "panning" || chart.state === "zooming") {
+    return chart;
+  }
+
   return {
     ...chart,
     hovered: {
@@ -202,6 +224,10 @@ export const onNodeMouseEnter: IStateCallback<IOnNodeMouseEnter> = ({
 export const onNodeMouseLeave: IStateCallback<IOnNodeMouseLeave> = ({
   nodeId,
 }) => (chart: IChart) => {
+  if (chart.state === "panning" || chart.state === "zooming") {
+    return chart;
+  }
+
   if (chart.hovered.type === "node" && chart.hovered.id === nodeId) {
     return { ...chart, hovered: {} };
   }
@@ -330,9 +356,10 @@ export const onCanvasDrop: IStateCallback<IOnCanvasDrop> = ({
   return chart;
 };
 
-export const onZoomCanvas: IOnZoomCanvas = ({ config, data }) => (
+export const onZoomCanvas: IOnZoomCanvas = ({ config, data }, isScrolling) => (
   chart: IChart
 ): IChart => {
+  chart.state = isScrolling ? "zooming" : "idle";
   chart.offset = getOffset(config, { x: data.positionX, y: data.positionY });
   chart.scale = data.scale;
   return chart;

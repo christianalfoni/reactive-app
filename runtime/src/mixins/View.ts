@@ -1,196 +1,29 @@
-import { IArrayDidChange, action, autorun, observable, observe } from "mobx";
+import { action, autorun, IArrayDidChange, observe } from "mobx";
 
-export function applyMixins(derivedCtor: any, constructors: any[]) {
-  constructors.forEach((baseCtor) => {
-    Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
-      if (name === "constructor") {
-        return;
-      }
-      Object.defineProperty(
-        derivedCtor.prototype,
-        name,
-        Object.getOwnPropertyDescriptor(baseCtor.prototype, name)!
-      );
-    });
-  });
-}
-
-export type DisposableValue = (() => void) | { cancel: () => void };
-
-export const DISPOSABLES = Symbol("DISPOSABLES");
-
-export const IS_DISPOSED = Symbol("IS_DISPOSED");
-
-export class Disposable {
-  [DISPOSABLES]: DisposableValue[];
-  [IS_DISPOSED]: boolean;
-
-  isDisposed() {
-    return Boolean(this[IS_DISPOSED]);
-  }
-
-  onDispose(disposable: DisposableValue) {
-    if (!this[DISPOSABLES]) {
-      this[DISPOSABLES] = [];
-    }
-
-    this[DISPOSABLES].push(disposable);
-    return () => {
-      this[DISPOSABLES].splice(this[DISPOSABLES].indexOf(disposable), 1);
-
-      if ("cancel" in disposable) {
-        disposable.cancel();
-      } else {
-        disposable();
-      }
-    };
-  }
-
-  dispose() {
-    if (this[DISPOSABLES]) {
-      this[DISPOSABLES].forEach((disposable) => {
-        if ("cancel" in disposable) {
-          disposable.cancel();
-        } else {
-          disposable();
-        }
-      });
-    }
-
-    this[IS_DISPOSED] = true;
-  }
-}
-
-export class Resolver {
-  [IS_DISPOSED]: boolean;
-  resolve<T>(
-    promise: Promise<T>,
-    resolvers?: {
-      rejected: (error: Error) => void;
-      resolved: (data: T) => void;
-    }
-  ) {
-    return promise
-      .then((data) => {
-        if (this[IS_DISPOSED]) {
-          throw new Error("Disposed");
-        }
-
-        if (resolvers) {
-          return action(resolvers.resolved)(data);
-        }
-
-        return data;
-      })
-      .catch((error) => {
-        if (this[IS_DISPOSED]) {
-          console.warn(
-            `${this.constructor.name} rejected async, but is disposed`
-          );
-          return;
-        }
-
-        if (resolvers) {
-          return action(resolvers.rejected)(error);
-        }
-
-        throw new Error("Disposed");
-      });
-  }
-}
-
-export type StateMachineTransitions<
-  S extends { current: string; [key: string]: unknown }
-> = {
-  [T in S["current"]]: {
-    [K in S["current"]]?:
-      | boolean
-      | ((
-          nextState: S extends { current: K } ? S : never,
-          prevState: S extends { current: T } ? S : never
-        ) => boolean);
-  };
-};
-
-export class StateMachine<
-  S extends { current: string; [key: string]: unknown }
-> {
-  @observable
-  state!: S;
-
-  readonly transitions: StateMachineTransitions<S> = null as any;
-
-  @action
-  transition(newState: S): S | void {
-    if (!this.transitions) {
-      throw new Error(
-        "You have not defined the transitions for this state machine"
-      );
-    }
-
-    if (!(this.transitions as any)[this.state.current][newState.current]) {
-      console.warn(
-        `Invalid transition from "${this.state.current}" to "${newState.current}"`
-      );
-      return;
-    }
-
-    if (
-      typeof (this.transitions as any)[this.state.current][newState.current] ===
-        "function" &&
-      !(this.transitions as any)[this.state.current][newState.current](
-        this.state
-      )
-    ) {
-      console.warn(
-        `Ignoring transition from "${this.state.current}" to "${newState.current}"`
-      );
-      return;
-    }
-
-    // We automatically dispose of any disposables
-    Object.values(this.state).forEach((value: any) => {
-      if (value && value[IS_DISPOSED] === false) {
-        value.dispose();
-      }
-    });
-
-    this.state = newState;
-
-    return newState;
-  }
-
-  matches<T extends S["current"]>(state: T): (S & { current: T }) | null {
-    if (this.state.current === state) {
-      return this.state as any;
-    }
-
-    return null;
-  }
-}
-
-export type UIEvents = {
+export type ViewEvents = {
   [type: string]: {
     [selector: string]: EventListener;
   };
 };
 
-export interface UISelectorMethods<T extends {}> {
-  text(key: string): UISelectorMethods<T>;
+export interface ViewSelectorMethods<T extends {}> {
+  text(key: string): ViewSelectorMethods<T>;
   items<P extends keyof T>(
     key: P,
-    cb: (item: T[P]) => UISelector<T>
-  ): UISelectorMethods<T>;
-  attr(key: string, attr: string | (() => string)): UISelectorMethods<T>;
-  prop(key: string, prop: string | (() => any)): UISelectorMethods<T>;
-  content(cb: (el: Element) => string | UISelector<any>): UISelectorMethods<T>;
-  event(type: string, cb: EventListener): UISelectorMethods<T>;
+    cb: (item: T[P]) => ViewSelector<T>
+  ): ViewSelectorMethods<T>;
+  attr(key: string, attr: string | (() => string)): ViewSelectorMethods<T>;
+  prop(key: string, prop: string | (() => any)): ViewSelectorMethods<T>;
+  content(
+    cb: (el: Element) => string | ViewSelector<any>
+  ): ViewSelectorMethods<T>;
+  event(type: string, cb: EventListener): ViewSelectorMethods<T>;
 }
 
-export interface UISelector<T extends {}> {
-  (selector: string): UISelectorMethods<T>;
+export interface ViewSelector<T extends {}> {
+  (selector: string): ViewSelectorMethods<T>;
   nodes: ChildNode[];
-  events: UIEvents;
+  events: ViewEvents;
   parent: Element | null;
   dispose: () => Element | null;
   appendTo: (parent: Element) => void;
@@ -198,12 +31,12 @@ export interface UISelector<T extends {}> {
 
 const UI_SELECTORS = Symbol("UI_SELECTORS");
 
-export class UI {
-  [UI_SELECTORS]: UISelector<{}>[];
+export class View {
+  [UI_SELECTORS]: ViewSelector<{}>[];
   html<T = this>(
     strings: TemplateStringsArray,
     ...tags: string[]
-  ): UISelector<T> {
+  ): ViewSelector<T> {
     if (!this[UI_SELECTORS]) {
       this[UI_SELECTORS] = [];
     }
@@ -225,7 +58,7 @@ export class UI {
     };
 
     const self = this as any;
-    const events: UIEvents = {};
+    const events: ViewEvents = {};
     const disposables: (() => void)[] = [];
 
     const $ = (selector: string) => {
@@ -246,9 +79,9 @@ export class UI {
 
           return this;
         },
-        items<P extends keyof T>(key: P, cb: (item: T[P]) => UISelector<T>) {
+        items<P extends keyof T>(key: P, cb: (item: T[P]) => ViewSelector<T>) {
           const el = getElement(selector);
-          const selectors: UISelector<T>[] = [];
+          const selectors: ViewSelector<T>[] = [];
 
           disposables.push(
             observe(
@@ -323,7 +156,7 @@ export class UI {
 
           return this;
         },
-        content(cb: (el: Element) => string | UISelector<any>) {
+        content(cb: (el: Element) => string | ViewSelector<any>) {
           const el = getElement(selector);
 
           let content: any;
@@ -400,7 +233,7 @@ export class UI {
 
     return $;
   }
-  hotReloadUI() {
+  hotReloadView() {
     const parents = this[UI_SELECTORS].map((selector) => selector.dispose());
     const parent = parents.find((parent) => Boolean(parent?.parentNode));
 

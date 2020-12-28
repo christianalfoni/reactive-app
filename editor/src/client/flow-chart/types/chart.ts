@@ -13,6 +13,7 @@ export type IChart<ChartProps = undefined, LinkProps = undefined> = {
   /** System Temp */
   selected: ISelectedOrHovered;
   hovered: ISelectedOrHovered;
+  state: "idle" | "panning" | "zooming";
 } & (ChartProps extends undefined
   ? {
       properties?: any;

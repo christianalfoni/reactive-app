@@ -2,7 +2,9 @@ import { observer } from "mobx-react";
 import * as React from "react";
 import { AiOutlineCode } from "react-icons/ai";
 import { BiCurrentLocation } from "react-icons/bi";
+import { GiFactory } from "react-icons/gi";
 import { HiCog, HiLink, HiOutlineEye } from "react-icons/hi";
+import { FiBox } from "react-icons/fi";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
@@ -36,6 +38,10 @@ const Header = styled.div`
   flex-direction: column;
 `;
 
+const FactoryIcon = styled(GiFactory)`
+  color: ${colors.blue[400]};
+`
+
 const StringValue = styled.span`
   color: ${colors.yellow[400]};
   white-space: nowrap;
@@ -64,7 +70,7 @@ const Name = styled.h3`
 const Type = styled.div`
   font-size: 10px;
   margin-bottom: 0.25rem;
-  color: ${colors.purple[400]};
+  color: ${colors.gray[400]};
 `;
 
 const PropsWrapper = styled.div`
@@ -156,7 +162,7 @@ export const NodeInnerDefault = observer(
               {node.properties.mixins.length ? (
                 <Type>{node.properties.mixins.join(", ")}</Type>
               ) : null}
-              <Name>{node.properties.name}</Name>
+              <Name>{node.properties.mixins.includes(Mixin.Factory) ? <FactoryIcon /> : null} {node.properties.name}</Name>
             </Header>
           )}
         </div>
@@ -188,17 +194,19 @@ export const NodeInnerDefault = observer(
               </Property>
             );
           })}
-          {node.properties.observables.map((observable) => {
+          {node.properties.properties.map((property) => {
             return (
-              <Property key={observable.name}>
-                <HiOutlineEye />{" "}
+              <Property key={property.name}>
+                {property.type === 'observable' ? <HiOutlineEye /> : null}
+                {property.type === 'computed' ? <HiCog /> : null}
+                {property.type === undefined ? <FiBox /> : null}{" "}
                 <span>
-                  {observable.name}{" "}
+                  {property.name}{" "}
                   {instanceId &&
-                  node.properties.instances[instanceId].values[observable.name]
+                  node.properties.instances[instanceId].values[property.name]
                     ? renderValue(
                         node.properties.instances[instanceId].values[
-                          observable.name
+                          property.name
                         ]
                       )
                     : null}
@@ -206,38 +214,12 @@ export const NodeInnerDefault = observer(
               </Property>
             );
           })}
-          {node.properties.computed.map((computed) => {
+          {node.properties.methods.map((method) => {
             return (
-              <Property key={computed.name}>
-                <HiCog />{" "}
-                <span>
-                  {computed.name}{" "}
-                  {instanceId &&
-                  node.properties.instances[instanceId].values[computed.name]
-                    ? renderValue(
-                        node.properties.instances[instanceId].values[
-                          computed.name
-                        ]
-                      )
-                    : null}
-                </span>
-              </Property>
-            );
-          })}
-          {node.properties.actions.map((action) => {
-            return (
-              <Property key={action.name}>
+              <Property key={method.name}>
                 <AiOutlineCode />{" "}
                 <span>
-                  {action.name}{" "}
-                  {instanceId &&
-                  node.properties.instances[instanceId].values[action.name]
-                    ? renderValue(
-                        node.properties.instances[instanceId].values[
-                          action.name
-                        ]
-                      )
-                    : null}
+                  {method.name}
                 </span>
               </Property>
             );

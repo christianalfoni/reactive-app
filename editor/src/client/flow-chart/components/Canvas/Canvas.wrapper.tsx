@@ -131,8 +131,8 @@ export class CanvasWrapper extends React.Component<
             }
             doubleClick={{ disabled: true, step: 10, mode: doubleClickMode }}
             pinch={{ disabled: false }}
-            onWheel={(data: any) => onZoomCanvas({ config, data })}
-            onWheelStop={(data: any) => onZoomCanvas({ config, data })}
+            onWheel={(data: any) => onZoomCanvas({ config, data }, true)}
+            onWheelStop={(data: any) => onZoomCanvas({ config, data }, false)}
             onPanning={(data: any) => onDragCanvas({ config, data })}
             onPanningStop={(data: any) => onDragCanvasStop({ config, data })}
           >
