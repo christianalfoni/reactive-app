@@ -1,13 +1,10 @@
 import { observer } from "mobx-react";
 import * as React from "react";
-import { FiBox } from "react-icons/fi";
+import { HiCog } from "react-icons/hi";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
-import {
-Property as TProperty
-} from "../../../../common/types";
-import { useBackend } from "../../../backend";
+import { Property } from "../../../../common/types";
 
 const PropertyWrapper = styled.div`
   display: flex;
@@ -15,7 +12,7 @@ const PropertyWrapper = styled.div`
   margin-bottom: ${space[2]};
 `;
 
-const PropertyIcon = styled(FiBox)`
+const PropertyIcon = styled(HiCog)`
   margin-right: ${space[2]};
   color: ${colors.gray[600]};
   cursor: pointer;
@@ -24,19 +21,19 @@ const PropertyIcon = styled(FiBox)`
   }
 `;
 
-export const Property = observer(
+export const Getter = observer(
   ({
     property,
     id,
-    toggleObservable
+    toggleComputed,
   }: {
-    property: TProperty;
-    id: string,
-    toggleObservable: (id: string, property: TProperty) => void
+    property: Property;
+    id: string;
+    toggleComputed: (id: string, property: Property) => void;
   }) => {
     return (
       <PropertyWrapper>
-		  <PropertyIcon onClick={() => toggleObservable(id, property)} />
+        <PropertyIcon onClick={() => toggleComputed(id, property)} />
         {property.name}
       </PropertyWrapper>
     );

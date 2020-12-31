@@ -3,7 +3,7 @@ import * as React from "react";
 import { AiOutlineCode } from "react-icons/ai";
 import { BiCurrentLocation } from "react-icons/bi";
 import { GiFactory } from "react-icons/gi";
-import { HiCog, HiLink, HiOutlineEye } from "react-icons/hi";
+import { HiCog, HiLink } from "react-icons/hi";
 import { FiBox } from "react-icons/fi";
 import styled from "styled-components";
 
@@ -40,7 +40,7 @@ const Header = styled.div`
 
 const FactoryIcon = styled(GiFactory)`
   color: ${colors.blue[400]};
-`
+`;
 
 const StringValue = styled.span`
   color: ${colors.yellow[400]};
@@ -89,13 +89,13 @@ const NameInput = styled.input`
   color: ${colors.gray[100]};
   background-color: transparent;
   border: 0;
-  border-bottom: 1px solid ${colors.purple[500]};
+  border-bottom: 1px solid ${colors.green[500]};
   font-weight: bold;
   &:active,
   &:focus {
     border: 0;
     outline: none;
-    border-bottom: 1px solid ${colors.purple[500]};
+    border-bottom: 1px solid ${colors.green[500]};
   }
 `;
 
@@ -162,7 +162,12 @@ export const NodeInnerDefault = observer(
               {node.properties.mixins.length ? (
                 <Type>{node.properties.mixins.join(", ")}</Type>
               ) : null}
-              <Name>{node.properties.mixins.includes(Mixin.Factory) ? <FactoryIcon /> : null} {node.properties.name}</Name>
+              <Name>
+                {node.properties.mixins.includes(Mixin.Factory) ? (
+                  <FactoryIcon />
+                ) : null}{" "}
+                {node.properties.name}
+              </Name>
             </Header>
           )}
         </div>
@@ -197,9 +202,25 @@ export const NodeInnerDefault = observer(
           {node.properties.properties.map((property) => {
             return (
               <Property key={property.name}>
-                {property.type === 'observable' ? <HiOutlineEye /> : null}
-                {property.type === 'computed' ? <HiCog /> : null}
-                {property.type === undefined ? <FiBox /> : null}{" "}
+                {property.type === "computed" || property.type === "getter" ? (
+                  <HiCog
+                    style={{
+                      color:
+                        property.type === "computed"
+                          ? colors.orange[400]
+                          : undefined,
+                    }}
+                  />
+                ) : (
+                  <FiBox
+                    style={{
+                      color:
+                        property.type === "observable"
+                          ? colors.orange[400]
+                          : undefined,
+                    }}
+                  />
+                )}
                 <span>
                   {property.name}{" "}
                   {instanceId &&
@@ -217,10 +238,7 @@ export const NodeInnerDefault = observer(
           {node.properties.methods.map((method) => {
             return (
               <Property key={method.name}>
-                <AiOutlineCode />{" "}
-                <span>
-                  {method.name}
-                </span>
+                <AiOutlineCode /> <span>{method.name}</span>
               </Property>
             );
           })}

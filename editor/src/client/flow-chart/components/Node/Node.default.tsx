@@ -26,6 +26,6 @@ export const NodeDefault = styled.div<INodeDefaultProps>`
   ${(props) =>
     props.isSelected &&
     css`
-      border: 1px solid ${colors.purple[500]};
+      border: 1px solid ${colors.green[500]};
     `}
 ` as any;

@@ -13,6 +13,8 @@ import { Computed } from "./Computed";
 import { Injector } from "./Injector";
 import { Observable } from "./Observable";
 import { Property } from "./Property";
+import { actions } from "../../../flow-chart";
+import { Getter } from "./Getter";
 
 const Wrapper = styled.div`
   padding: ${space[2]} ${space[4]};
@@ -214,34 +216,50 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
       </div>
       <div>
         {node.properties.properties.map((property) => {
-          if (!property.type) {
-            return (
-              <Property
-                key={property.name}
-                property={property}
-              />
-            )
-          }
-
-          if (property.type === 'observable') {
+          console.log(property);
+          if (property.type === "observable") {
             return (
               <Observable
                 key={property.name}
+                id={id}
                 property={property}
                 instance={instance}
+                toggleObservable={backend.actions.onToggleObservable}
               />
-            )
+            );
           }
 
-          if (property.type === 'computed') {
+          if (property.type === "computed") {
             return (
               <Computed
                 key={property.name}
+                id={id}
                 property={property}
                 instance={instance}
+                toggleComputed={backend.actions.onToggleComputed}
               />
-            )
+            );
           }
+
+          if (property.type === "getter") {
+            return (
+              <Getter
+                key={property.name}
+                id={id}
+                property={property}
+                toggleComputed={backend.actions.onToggleComputed}
+              />
+            );
+          }
+
+          return (
+            <Property
+              key={property.name}
+              id={id}
+              property={property}
+              toggleObservable={backend.actions.onToggleObservable}
+            />
+          );
         })}
       </div>
       <div>
@@ -250,20 +268,24 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
             return (
               <Method
                 key={method.name}
+                id={id}
                 method={method}
+                toggleAction={backend.actions.onToggleAction}
               />
-            )
+            );
           }
 
           return (
             <Action
               key={method.name}
+              id={id}
               action={method}
               runAction={backend.actions.onRunAction}
+              toggleAction={backend.actions.onToggleAction}
               instanceId={node.properties.currentInstanceId}
               instance={instance}
             />
-          )
+          );
         })}
       </div>
     </Wrapper>

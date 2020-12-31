@@ -1,6 +1,6 @@
 import { observer } from "mobx-react";
 import * as React from "react";
-import { HiOutlineEye } from "react-icons/hi";
+import { FiBox } from "react-icons/fi";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
@@ -21,22 +21,27 @@ const ObservableWrapper = styled.div`
   margin-bottom: ${space[2]};
 `;
 
-const ObservableIcon = styled(HiOutlineEye)`
+const ObservableIcon = styled(FiBox)`
   margin-right: ${space[2]};
-  color: ${colors.gray[600]};
+  cursor: pointer;
+  color: ${colors.orange[500]};
 `;
 
 export const Observable = observer(
   ({
+    id,
     property,
     instance,
+    toggleObservable
   }: {
+    id: string,
     property: Property;
     instance: ClassInstance | null;
+    toggleObservable: (id: string, property: Property) => void
   }) => {
     return (
       <ObservableWrapper>
-        <ObservableIcon />
+        <ObservableIcon onClick={() => toggleObservable(id, property)} />
         {property.name}
         <div>
           <EditCurrentValueContainer>

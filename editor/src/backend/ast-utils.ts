@@ -5,28 +5,24 @@ import {
   ExpressionStatement,
   InterfaceDeclaration,
   StringLiteral,
+  ClassDeclaration,
+  ObjectLiteralExpression,
+  Node,
+  Statement,
+  MethodDeclaration,
+  StructureKind,
+  ConstructorDeclaration,
+  PropertyDeclaration,
+  GetAccessorDeclaration,
+  ClassMemberTypes,
 } from "ts-morph";
 import * as ts from "typescript";
 
 import { Property, Method, Injector, Mixin } from "../common/types";
 import { writeLineBreak } from "./TsMorphFs";
 
-export function getClassNode(
-  node: ts.SourceFile,
-  name: string
-): ts.ClassDeclaration {
-  const classNode = node.statements.reduce<ts.ClassDeclaration | undefined>(
-    (aggr, statement) => {
-      if (aggr) return aggr;
-
-      if (ts.isClassDeclaration(statement)) {
-        if (statement.name && statement.name.text === name) {
-          return statement;
-        }
-      }
-    },
-    undefined
-  );
+export function getClassNode(node: SourceFile, name: string): ClassDeclaration {
+  const classNode = node.getClass(name);
 
   if (!classNode) {
     throw new Error("Could not find a class statement");
@@ -35,136 +31,228 @@ export function getClassNode(
   return classNode;
 }
 
-export function getClassMixins(node: ts.SourceFile, classId: string): Mixin[] {
-  const mixins: Mixin[] = [];
+export function getClassMixins(node: ClassDeclaration): Mixin[] {
+  const mixinsProperty = node.getProperty("mixins");
 
-  node.statements.forEach((statement) => {
-    if (
-      ts.isInterfaceDeclaration(statement) &&
-      statement.name.escapedText === classId &&
-      statement.heritageClauses &&
-      statement.heritageClauses[0]
-    ) {
-      statement.heritageClauses[0].types.forEach((heritageType) => {
-        if (
-          ts.isIdentifier(heritageType.expression) &&
-          (heritageType.expression.escapedText as string) in Mixin
-        ) {
-          mixins.push(heritageType.expression.escapedText as Mixin);
-        }
+  if (!mixinsProperty) {
+    throw new Error("Missing mixin property");
+  }
+
+  const initializer = mixinsProperty.getInitializer() as ArrayLiteralExpression;
+
+  if (!Node.isArrayLiteralExpression(initializer)) {
+    throw new Error(
+      "Mixins property is not initialized as ArrayLiteralExpression"
+    );
+  }
+
+  const elements = initializer.getElements() as StringLiteral[];
+
+  return elements.map((element) => JSON.parse(element.getText()) as Mixin);
+}
+
+export function getInjectors(node: ClassDeclaration): Injector[] {
+  const constr = node.getConstructors()[0];
+
+  if (!constr) {
+    return [];
+  }
+
+  const config = getConstructorConfig(constr, "injectFeatures");
+
+  if (!config) {
+    return [];
+  }
+
+  const injectors: Injector[] = [];
+
+  config.getProperties().forEach((property) => {
+    if (Node.isPropertyAssignment(property)) {
+      const name = property.getName();
+      const value = property.getInitializer() as StringLiteral;
+
+      injectors.push({
+        propertyName: name,
+        classId: JSON.parse(value.getText()),
       });
     }
   });
 
-  return mixins;
+  return injectors;
 }
 
-export function getInjectors(node: ts.ClassDeclaration): Injector[] {
-  return node.members.reduce<Injector[]>((aggr, member) => {
-    if (ts.isPropertyDeclaration(member)) {
-      const callExpression =
-        member.decorators &&
-        ts.isCallExpression(member.decorators[0].expression)
-          ? member.decorators[0].expression
-          : undefined;
-
-      if (callExpression && ts.isIdentifier(callExpression.expression)) {
-        const identifier = callExpression.expression;
-
-        if (
-          identifier.text === "inject" &&
-          callExpression.arguments[0] &&
-          ts.isStringLiteral(callExpression.arguments[0])
-        ) {
-          const stringLiteral = callExpression.arguments[0] as ts.StringLiteral;
-
-          return aggr.concat({
-            classId: stringLiteral.text,
-            propertyName: (member.name as ts.Identifier).text,
-          });
-        }
-      }
-    }
-
-    return aggr;
-  }, []);
-}
-
-export function getProperties(node: ts.ClassDeclaration) {
-  return node.members.reduce<Property[]>((aggr, member) => {
-    if (ts.isPropertyDeclaration(member)) {
-      if (
-        member.modifiers &&
-        member.modifiers.find(
+export function getProperties(node: ClassDeclaration) {
+  function shouldIgnore(member: ClassMemberTypes) {
+    return Boolean(
+      member
+        .getModifiers()
+        .find(
           (modifier) =>
-            modifier.kind === ts.SyntaxKind.PrivateKeyword ||
-            modifier.kind === ts.SyntaxKind.DeclareKeyword ||
-            modifier.kind === ts.SyntaxKind.StaticKeyword
+            modifier.getKind() === ts.SyntaxKind.PrivateKeyword ||
+            modifier.getKind() === ts.SyntaxKind.StaticKeyword ||
+            modifier.getKind() === ts.SyntaxKind.ReadonlyKeyword
         )
-      ) {
-        return aggr;
-      }
+    );
+  }
+  return node.getMembers().reduce<Property[]>((aggr, member) => {
+    if (Node.isPropertyDeclaration(member) && !shouldIgnore(member)) {
+      return aggr.concat({
+        name: member.getName(),
+      });
+    }
 
-      const identifier =
-        member.decorators && ts.isIdentifier(member.decorators[0].expression)
-          ? member.decorators[0].expression
-          : undefined;
-
-      const name = (member.name as ts.Identifier).text;
-
-      if (identifier && identifier.text === "observable") {
-        return aggr.concat({
-          name,
-          type: "observable",
-        });
-      }
-
-      if (identifier && identifier.text === "computed") {
-        return aggr.concat({
-          name,
-          type: "computed",
-        });
-      }
-
-      return aggr.concat({ name });
+    if (Node.isGetAccessorDeclaration(member) && !shouldIgnore(member)) {
+      return aggr.concat({
+        name: member.getName(),
+        type: "getter",
+      });
     }
 
     return aggr;
   }, []);
 }
 
-export function getMethods(node: ts.ClassDeclaration) {
-  return node.members.reduce<Method[]>((aggr, member) => {
-    if (ts.isMethodDeclaration(member)) {
-      if (
-        member.modifiers &&
-        member.modifiers.find(
-          (modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword
-        )
-      ) {
-        return aggr;
-      }
+export function getMethods(node: ClassDeclaration) {
+  return node.getMethods().reduce<Method[]>((aggr, method) => {
+    const shouldIgnore = method
+      .getModifiers()
+      .find(
+        (modifier) =>
+          modifier.getKind() === ts.SyntaxKind.PrivateKeyword ||
+          modifier.getKind() === ts.SyntaxKind.StaticKeyword
+      );
 
-      const identifier =
-        member.decorators && ts.isIdentifier(member.decorators[0].expression)
-          ? member.decorators[0].expression
-          : undefined;
-
-      const name = (member.name as ts.Identifier).text;
-
-      if (identifier && identifier.text === "action") {
-        return aggr.concat({
-          name,
-          type: "action",
-        });
-      }
-
-      return aggr.concat({ name });
+    if (shouldIgnore) {
+      return aggr;
     }
 
-    return aggr;
+    return aggr.concat({
+      name: method.getName(),
+    });
   }, []);
 }
+
+export function updateConstructor(
+  node: ClassDeclaration,
+  cb: (constr: ConstructorDeclaration) => void
+) {
+  let constr = node.getConstructors()[0];
+
+  if (!constr) {
+    const firstMethod = node.getMethods()[0];
+
+    if (firstMethod) {
+      const firstMethodIndex = firstMethod?.getChildIndex();
+      constr = node.insertConstructor(firstMethodIndex);
+    } else {
+      constr = node.addConstructor();
+    }
+  }
+
+  cb(constr);
+
+  if (!constr.getStatements().length) {
+    constr.remove();
+  }
+}
+
+export function getConstructorConfig(
+  constr: ConstructorDeclaration,
+  name: "makeObservable" | "injectFeatures"
+) {
+  const callExpression = constr.getFirstDescendant((node) => {
+    if (!Node.isCallExpression(node)) {
+      return false;
+    }
+    const expression = node.getExpression();
+
+    if (!Node.isPropertyAccessExpression(expression)) {
+      return false;
+    }
+
+    return expression.getName() === name;
+  }) as CallExpression | undefined;
+
+  if (callExpression) {
+    return callExpression.getArguments()[0] as ObjectLiteralExpression;
+  }
+}
+
+export function updateMakeObservable(
+  node: ClassDeclaration,
+  cb: (config: ObjectLiteralExpression) => void
+) {
+  updateConstructor(node, (constr) => {
+    let config = getConstructorConfig(constr, "makeObservable");
+
+    if (!config) {
+      constr.addStatements(["this.makeObservable({})"]);
+      config = getConstructorConfig(constr, "makeObservable")!;
+    }
+
+    cb(config);
+
+    if (!config.getProperties().length) {
+      (config.getParent().getParent() as ExpressionStatement).remove();
+    }
+  });
+}
+
+export function updateInjectFeatures(
+  node: ClassDeclaration,
+  cb: (config: ObjectLiteralExpression) => void
+) {
+  updateConstructor(node, (constr) => {
+    let config = getConstructorConfig(constr, "injectFeatures");
+
+    if (!config) {
+      constr.addStatements(["this.injectFeatures({})"]);
+      config = getConstructorConfig(constr, "injectFeatures")!;
+    }
+
+    cb(config);
+
+    if (!config.getProperties().length) {
+      (config.getParent().getParent() as ExpressionStatement).remove();
+    }
+  });
+}
+
+export function getObservables(node: ClassDeclaration) {
+  const observables: {
+    observable: string[];
+    computed: string[];
+    action: string[];
+  } = {
+    observable: [],
+    computed: [],
+    action: [],
+  };
+
+  const constr = node.getConstructors()[0];
+
+  if (!constr) {
+    return observables;
+  }
+
+  const config = getConstructorConfig(constr, "makeObservable");
+
+  if (config) {
+    config.getProperties().forEach((property) => {
+      if (Node.isPropertyAssignment(property)) {
+        const name = property.getName();
+        const value = property.getInitializer() as StringLiteral;
+        const type = JSON.parse(value.getText()) as keyof typeof observables;
+
+        observables[type]?.push(name);
+      }
+    });
+  }
+
+  return observables;
+}
+
+export function getInjections(node: ts.ClassDeclaration) {}
 
 export function addImportDeclaration(
   sourceFile: SourceFile,

@@ -166,6 +166,27 @@ export class Editor {
           message.data.toClassId
         );
         break;
+      case "toggle-observable":
+        this.filesManager.toggleMakeObservableProperty(
+          message.data.classId,
+          message.data.name,
+          message.data.isActive ? undefined : "observable"
+        );
+        break;
+      case "toggle-computed":
+        this.filesManager.toggleMakeObservableProperty(
+          message.data.classId,
+          message.data.name,
+          message.data.isActive ? undefined : "computed"
+        );
+        break;
+      case "toggle-action":
+        this.filesManager.toggleMakeObservableProperty(
+          message.data.classId,
+          message.data.name,
+          message.data.isActive ? undefined : "action"
+        );
+        break;
       default:
         this.clientSocket?.send(JSON.stringify(message));
     }

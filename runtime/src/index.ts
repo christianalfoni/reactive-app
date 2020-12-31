@@ -1,13 +1,19 @@
-import { makeObservable } from "mobx";
+import { action, computed, makeObservable, observable } from "mobx";
 
 import { INSTANCE_ID } from "./common";
 import { IDevtool } from "./devtool";
 import { Devtool } from "./devtool";
 import * as mixins from "./mixins";
+import { IClass, IContainerConfig, IOptions } from "./types";
+import { TInjection } from "./mixins/Feature";
 
 export * from "mobx";
 
 export * from "./mixins";
+
+export * from "./types";
+
+export type TFeature<T extends IClass<any>> = TInjection<T>;
 
 function applyMixins(derivedCtor: any, constructors: any[]) {
   constructors.forEach((baseCtor) => {
@@ -23,27 +29,6 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
     });
   });
 }
-
-export interface IOptions {
-  devtool?: string;
-}
-
-export interface IClass<T> {
-  new (...args: any[]): T;
-  mixins?: string[];
-}
-
-export interface IContainerConfig {
-  [key: string]: IClass<any>;
-}
-
-export type IInjection<T extends IClass<any>> = T extends IClass<infer O>
-  ? O extends mixins.Factory
-    ? (...args: ConstructorParameters<T>) => O
-    : O
-  : never;
-
-const IOC_CONTAINER = Symbol("IOC_CONTAINER");
 
 export class Container<T extends IContainerConfig> {
   private _classes = new Map<keyof T, any>();
@@ -78,6 +63,77 @@ export class Container<T extends IContainerConfig> {
 
     this._classes.set(id, SingletonOrFactory);
   }
+  private errorInjectFeatures() {
+    throw new Error("Features can only be injected in the constructor");
+  }
+  private makeObservable(props: any) {
+    const observables: any = {};
+
+    Object.keys(props).forEach((key) => {
+      const configType = (props as any)[key];
+
+      if (configType === "observable") {
+        observables[key] = observable;
+      } else if (configType === "action") {
+        observables[key] = action;
+      } else if (configType === "computed") {
+        observables[key] = computed;
+      }
+    });
+
+    makeObservable(this, observables);
+  }
+  private createInjectFeatures(instanceId: number) {
+    const self = this;
+    return function (this: any, props: any) {
+      Object.keys(props).forEach((key) => {
+        const classKey = props[key];
+
+        Object.defineProperty(this, key, {
+          get() {
+            const clas = self._classes.get(classKey);
+            let instance;
+
+            if (clas.mixins && clas.mixins.includes("Factory")) {
+              const factory = self.get(classKey) as any;
+
+              instance = (...args: any[]) => {
+                const instance = factory(...args);
+                self._devtool?.sendInjection({
+                  propertyName: key,
+                  injectClassId: classKey,
+                  injectInstanceId: instance[INSTANCE_ID],
+                  instanceId: instanceId,
+                  classId: this.constructor.name,
+                });
+                return instance;
+              };
+            } else {
+              instance = self.get(classKey) as any;
+              self._devtool?.sendInjection({
+                propertyName: key,
+                injectClassId: classKey,
+                injectInstanceId: instance[INSTANCE_ID],
+                instanceId: instanceId,
+                classId: this.constructor.name,
+              });
+            }
+
+            // We do not need to dynamically grab it again
+            Object.defineProperty(this, key, {
+              value: instance,
+              configurable: false,
+              enumerable: false,
+            });
+
+            return instance;
+          },
+          enumerable: false,
+          configurable: true,
+        });
+      });
+    };
+  }
   private create<U extends keyof T>(
     id: U,
     ...args: any[]
@@ -90,29 +146,25 @@ export class Container<T extends IContainerConfig> {
     const self = this;
     const instanceId = this._currentClassId++;
     const proxy = new Proxy(constr, {
-      construct: function (this: any, target, args) {
-        const obj = Object.create(constr.prototype);
-        this.apply(target, obj, args);
-        return obj;
-      },
-      apply: function (_, that, args) {
-        that[IOC_CONTAINER] = self;
-        that[INSTANCE_ID] = instanceId;
-        constr.apply(that, args);
+      construct: function (target, args) {
+        constr.prototype.injectFeatures = self.createInjectFeatures(instanceId);
+
+        self._devtool?.setInstanceSpy(instanceId);
+
+        const instance = Reflect.construct(constr, args);
+
+        self._devtool?.unsetInstanceSpy();
+
+        instance[INSTANCE_ID] = instanceId;
+
+        constr.prototype.injectFeatures = self.errorInjectFeatures;
+
+        return instance;
       },
     });
 
     const instance = new proxy(...args);
 
-    try {
-      this._devtool?.setInstanceSpy(instanceId);
-
-      makeObservable(instance);
-    } catch {
-      // No observables
-    }
-
-    this._devtool?.unsetInstanceSpy();
     this._devtool?.sendInstance(id as string, instanceId, instance);
 
     return (instance as unknown) as any;
@@ -185,57 +237,6 @@ export class Container<T extends IContainerConfig> {
       }
     });
   }
-}
-
-export function inject(classKey: string): any {
-  return function (target: any, key: string): any {
-    return {
-      get() {
-        if (!this[IOC_CONTAINER]) {
-          throw new Error("You are using inject on a non injectable class");
-        }
-
-        const clas = this[IOC_CONTAINER].get(classKey);
-        let instance;
-
-        if (clas.mixins && clas.mixins.includes("Factory")) {
-          const factory = this[IOC_CONTAINER].getFactory(classKey);
-
-          instance = (...args: any[]) => {
-            const instance = factory(...args);
-            this[IOC_CONTAINER]._devtool?.sendInjection({
-              propertyName: key,
-              injectClassId: classKey,
-              injectInstanceId: instance[INSTANCE_ID],
-              instanceId: this[INSTANCE_ID],
-              classId: this.constructor.name,
-            });
-            return instance;
-          };
-        } else {
-          instance = this[IOC_CONTAINER].get(classKey);
-          this[IOC_CONTAINER]._devtool?.sendInjection({
-            propertyName: key,
-            injectClassId: classKey,
-            injectInstanceId: instance[INSTANCE_ID],
-            instanceId: this[INSTANCE_ID],
-            classId: this.constructor.name,
-          });
-        }
-
-        // We do not need to dynamically grab it again
-        Object.defineProperty(target, key, {
-          value: instance,
-          configurable: false,
-          enumerable: false,
-        });
-
-        return instance;
-      },
-      enumerable: false,
-      configurable: true,
-    };
-  };
 }
 
 type ExtractMethods<T extends any> = {

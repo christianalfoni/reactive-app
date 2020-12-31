@@ -1,6 +1,13 @@
 import { observable, toJS } from "mobx";
 import * as React from "react";
-import { Backend, ClientMessage, Injector, Mixin } from "../../common/types";
+import {
+  Backend,
+  ClientMessage,
+  Injector,
+  Method,
+  Mixin,
+  Property,
+} from "../../common/types";
 import { IChart, INode } from "../flow-chart";
 import * as actions from "../flow-chart/container/actions";
 import { createOnMessage } from "./onMessage";
@@ -16,6 +23,9 @@ export type ClientBackend = {
     onRunAction(instanceId: number, name: string): void;
     onToggleMixin(classId: string, mixin: Mixin): void;
     onDeleteClass(classId: string): void;
+    onToggleObservable(classId: string, property: Property): void;
+    onToggleComputed(classId: string, property: Property): void;
+    onToggleAction(classId: string, method: Method): void;
   };
   send: (message: any) => void;
 } & Backend;
@@ -31,7 +41,7 @@ export const chart: IChart = observable({
   links: {},
   selected: {},
   hovered: {},
-  state: 'idle'
+  state: "idle",
 });
 
 let isConnected = false;
@@ -101,7 +111,9 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
       data: {
         fromClassId: fromId,
         toClassId: toId,
-        asFactory: chart.nodes[fromId].properties.mixins.includes(Mixin.Factory)
+        asFactory: chart.nodes[fromId].properties.mixins.includes(
+          Mixin.Factory
+        ),
       },
     });
   }) as typeof actions.onLinkComplete,
@@ -213,6 +225,36 @@ const backend = observable<ClientBackend>({
         type: "class-delete",
         data: {
           classId,
+        },
+      });
+    },
+    onToggleObservable(classId: string, property: Property) {
+      send({
+        type: "toggle-observable",
+        data: {
+          classId,
+          name: property.name,
+          isActive: property.type === "observable",
+        },
+      });
+    },
+    onToggleComputed(classId: string, property: Property) {
+      send({
+        type: "toggle-computed",
+        data: {
+          classId,
+          name: property.name,
+          isActive: property.type === "computed",
+        },
+      });
+    },
+    onToggleAction(classId: string, method: Method) {
+      send({
+        type: "toggle-action",
+        data: {
+          classId,
+          name: method.name,
+          isActive: method.type === "action",
         },
       });
     },

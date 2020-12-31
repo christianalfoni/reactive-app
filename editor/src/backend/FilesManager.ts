@@ -1,8 +1,9 @@
 import * as fs from "fs";
+import { property } from "lodash";
 import * as path from "path";
 
 import * as prettier from "prettier";
-import { Project } from "ts-morph";
+import { Node, Project, StructureKind } from "ts-morph";
 import * as ts from "typescript";
 
 import {
@@ -112,18 +113,29 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     }
   }
 
-  private extractClass(classId: string, content: Uint8Array) {
-    const node = ts.createSourceFile(
-      "temp.ts",
-      new TextDecoder("utf-8").decode(content),
-      ts.ScriptTarget.Latest
-    );
+  private extractClass(classId: string) {
+    const node = this.getAppSourceFile(classId);
 
     const classNode = ast.getClassNode(node, classId);
-    const mixins = ast.getClassMixins(node, classId);
+    const mixins = ast.getClassMixins(classNode);
     const injectors = ast.getInjectors(classNode);
     const properties = ast.getProperties(classNode);
     const methods = ast.getMethods(classNode);
+    const observables = ast.getObservables(classNode);
+
+    properties.forEach((property) => {
+      if (observables.observable.includes(property.name)) {
+        property.type = "observable";
+      } else if (observables.computed.includes(property.name)) {
+        property.type = "computed";
+      }
+    });
+
+    methods.forEach((property) => {
+      if (observables.action.includes(property.name)) {
+        property.type = "action";
+      }
+    });
 
     return {
       classId,
@@ -135,10 +147,9 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   }
 
   private async getClass(fileName: string): Promise<ExtractedClass> {
-    const content = await fs.promises.readFile(path.resolve(APP_DIR, fileName));
     const classId = this.getClassIdFromFileName(fileName);
 
-    return this.extractClass(classId, content);
+    return this.extractClass(classId);
   }
 
   private getClassIdFromFileName(fileName: string) {
@@ -155,16 +166,12 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
           !file.endsWith(".spec.ts")
       );
 
-      const contents = await Promise.all(
-        files.map((file) => fs.promises.readFile(path.resolve(appDir, file)))
-      );
-
-      return contents.reduce<{
+      return files.reduce<{
         [key: string]: ExtractedClass;
-      }>((aggr, content, index) => {
-        const classId = path.basename(files[index], ".ts");
+      }>((aggr, file) => {
+        const classId = path.basename(file, ".ts");
 
-        aggr[classId] = this.extractClass(classId, content);
+        aggr[classId] = this.extractClass(classId);
 
         return aggr;
       }, {});
@@ -202,7 +209,16 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     const file = path.resolve(APP_DIR, classId + ".ts")!;
 
     await this.writeClassToEntryFile(classId);
-    await this.writePrettyFile(file, `export class ${classId} {}`);
+    await this.writePrettyFile(
+      file,
+      `import { Feature } from 'reactive-app'
+
+export interface ${classId} extends Feature {}
+
+export class ${classId} {
+  static mixins = ["Feature"];
+}`
+    );
   }
 
   private async writeClassToEntryFile(classId: string) {
@@ -254,23 +270,33 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   }) {
     const sourceFile = this.getAppSourceFile(toClassId);
 
-    ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "inject");
-    ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "IInjection");
+    ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "TFeature");
     ast.addImportDeclaration(sourceFile, `./${fromClassId}`, fromClassId, true);
 
-    sourceFile.getClass(toClassId)?.insertProperty(0, {
-      name: asFactory
-        ? `create${fromClassId}`
-        : fromClassId[0].toLocaleLowerCase() + fromClassId.substr(1),
-      hasDeclareKeyword: true,
-      decorators: [
-        {
-          name: "inject",
-          arguments: [`"${fromClassId}"`],
-        },
-      ],
-      type: `IInjection<typeof ${fromClassId}>`,
+    const classNode = sourceFile.getClass(toClassId);
+
+    if (!classNode) {
+      throw new Error("Can not find class node");
+    }
+
+    const name = asFactory
+      ? `create${fromClassId}`
+      : fromClassId[0].toLocaleLowerCase() + fromClassId.substr(1);
+
+    classNode.insertProperty(0, {
+      name,
+      hasExclamationToken: true,
+      isReadonly: true,
+      type: `TFeature<typeof ${fromClassId}>`,
       trailingTrivia: writeLineBreak,
+    });
+
+    ast.updateInjectFeatures(classNode, (config) => {
+      config.addProperty({
+        name,
+        kind: StructureKind.PropertyAssignment,
+        initializer: `"${fromClassId}"`,
+      });
     });
 
     sourceFile.saveSync();
@@ -280,12 +306,15 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     const sourceFile = this.getAppSourceFile(toClassId);
 
     ast.removeImportDeclaration(sourceFile, `./${fromClassId}`);
-    ast.removeImportDeclaration(sourceFile, LIBRARY_IMPORT, "inject");
-    ast.removeImportDeclaration(sourceFile, LIBRARY_IMPORT, "IInjection");
 
-    sourceFile
-      .getClass(toClassId)
-      ?.getProperty((property) => {
+    const classNode = sourceFile.getClass(toClassId);
+
+    if (!classNode) {
+      throw new Error("Can not find class node");
+    }
+
+    classNode
+      .getProperty((property) => {
         const name = property.getName();
 
         return (
@@ -294,6 +323,47 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
         );
       })
       ?.remove();
+
+    ast.updateInjectFeatures(classNode, (config) => {
+      const property = config.getProperty((property) => {
+        if (!Node.isPropertyAssignment(property)) {
+          return false;
+        }
+        const initializer = property.getInitializer();
+
+        if (!Node.isStringLiteral(initializer)) {
+          return false;
+        }
+
+        return JSON.parse(initializer.getText()) === fromClassId;
+      });
+
+      property?.remove();
+    });
+
+    sourceFile.saveSync();
+  }
+
+  async toggleMakeObservableProperty(
+    classId: string,
+    name: string,
+    value?: "observable" | "computed" | "action"
+  ) {
+    const sourceFile = this.getAppSourceFile(classId);
+    const classNode = sourceFile.getClass(classId)!;
+
+    ast.updateMakeObservable(classNode, (config) => {
+      if (value) {
+        config.addProperty({
+          name,
+          kind: StructureKind.PropertyAssignment,
+          initializer: `"${value}"`,
+        });
+      } else {
+        const property = config.getProperty(name);
+        property?.remove();
+      }
+    });
 
     sourceFile.saveSync();
   }

@@ -25,7 +25,7 @@ export type Injector = {
 
 export type Property = {
   name: string;
-  type?: "observable" | "computed";
+  type?: "observable" | "computed" | "getter";
 };
 
 export type Method = {
@@ -150,6 +150,30 @@ export type ClientMessage =
       data: {
         classId: string;
         toClassId: string;
+      };
+    }
+  | {
+      type: "toggle-observable";
+      data: {
+        classId: string;
+        name: string;
+        isActive: boolean;
+      };
+    }
+  | {
+      type: "toggle-computed";
+      data: {
+        classId: string;
+        name: string;
+        isActive: boolean;
+      };
+    }
+  | {
+      type: "toggle-action";
+      data: {
+        classId: string;
+        name: string;
+        isActive: boolean;
       };
     };
 

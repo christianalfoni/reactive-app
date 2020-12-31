@@ -23,7 +23,8 @@ const ActionWrapper = styled.div`
 const ActionIcon = styled(AiOutlineCode)`
   margin-left: ${space[1]};
   margin-right: ${space[2]};
-  color: ${colors.gray[600]};
+  color: ${colors.orange[500]};
+  cursor: pointer;
 `;
 
 const RunWrapper = styled.div`
@@ -54,15 +55,19 @@ const ExecutionWrapper = styled.div``;
 
 export const Action = observer(
   ({
+    id,
     action,
     instanceId,
     instance,
     runAction,
+    toggleAction,
   }: {
+    id: string;
     action: Method;
     instanceId: number | null;
     instance: ClassInstance | null;
     runAction: (instanceId: number, name: string) => void;
+    toggleAction: (id: string, method: Method) => void;
   }) => {
     const [isExpanded, setExpanded] = React.useState(false);
 
@@ -70,7 +75,7 @@ export const Action = observer(
       <Wrapper>
         <ActionWrapper onClick={() => setExpanded(!isExpanded)}>
           {isExpanded ? <RiArrowDownSLine /> : <RiArrowRightSLine />}
-          <ActionIcon />
+          <ActionIcon onClick={() => toggleAction(id, action)} />
           {action.name} (
           {instance && instance.actionExecutions[action.name]
             ? instance.actionExecutions[action.name].length
