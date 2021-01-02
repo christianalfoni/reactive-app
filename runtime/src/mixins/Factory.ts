@@ -60,31 +60,30 @@ export class Factory {
       resolved: (data: T) => void;
     }
   ) {
-    return promise
-      .then((data) => {
-        if (this[IS_DISPOSED]) {
-          throw new Error("Disposed");
-        }
+    if (resolvers) {
+      return promise
+        .then((data) => {
+          if (this[IS_DISPOSED]) {
+            throw new Error("Disposed");
+          }
 
-        if (resolvers) {
           return action(resolvers.resolved)(data);
-        }
+        })
+        .catch((error) => {
+          if (this[IS_DISPOSED]) {
+            return;
+          }
 
-        return data;
-      })
-      .catch((error) => {
-        if (this[IS_DISPOSED]) {
-          console.warn(
-            `${this.constructor.name} rejected async, but is disposed`
-          );
-          return;
-        }
-
-        if (resolvers) {
           return action(resolvers.rejected)(error);
-        }
+        }) as any;
+    }
 
+    return promise.then((data) => {
+      if (this[IS_DISPOSED]) {
         throw new Error("Disposed");
-      }) as any;
+      }
+
+      return data;
+    }) as any;
   }
 }

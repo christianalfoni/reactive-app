@@ -1,3 +1,4 @@
+import { when } from "mobx";
 import { IClass } from "../types";
 import { Factory } from "./Factory";
 
@@ -21,5 +22,12 @@ export class Feature {
     }
   ): void {
     // This method is overriden by the container
+  }
+  when(condition: () => boolean, cb?: () => void) {
+    const disposer = cb ? when(condition, cb) : when(condition);
+
+    if (typeof (this as any).onDispose === "function") {
+      (this as any).onDispose(disposer);
+    }
   }
 }

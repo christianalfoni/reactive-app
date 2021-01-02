@@ -216,7 +216,6 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
       </div>
       <div>
         {node.properties.properties.map((property) => {
-          console.log(property);
           if (property.type === "observable") {
             return (
               <Observable

@@ -9,14 +9,13 @@ export class StateMachine<
     throw new Error(`You have to implement the "onMessage" handler`);
   }
 
-  @action
   send(message: M): boolean {
     // @ts-ignore
     if (!this.state) {
       throw new Error("You have to add a state property to your statemachine");
     }
 
-    const newState = this.onMessage(message);
+    const newState = action(this.onMessage)(message);
 
     if (!newState) {
       return false;

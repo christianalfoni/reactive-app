@@ -444,6 +444,13 @@ switch (message.type) {
           });
         }
         ast.toggleMixin(sourceFile, classId, mixin);
+        ast.updateMakeObservable(clas, (config) => {
+          config.addProperty({
+            name: "state",
+            initializer: '"observable"',
+            kind: StructureKind.PropertyAssignment,
+          });
+        });
         break;
     }
 
@@ -499,8 +506,6 @@ switch (message.type) {
           return;
         }
 
-        console.log(eventType, fileName);
-
         if (eventType === "change") {
           const updatedClass = await this.getClass(fileName);
           this.classes[updatedClass.classId] = updatedClass;
@@ -513,7 +518,6 @@ switch (message.type) {
           this.classes[createdClass.classId] = createdClass;
           listeners.onClassCreate(createdClass);
         } else {
-          console.log("DELETING!");
           const classId = this.getClassIdFromFileName(fileName);
           delete this.classes[classId];
           delete this.metadata[classId];
