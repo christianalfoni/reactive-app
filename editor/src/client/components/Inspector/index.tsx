@@ -1,3 +1,4 @@
+import { observer } from "mobx-react";
 import * as React from "react";
 import { FunctionComponent, memo, useState } from "react";
 import {
@@ -192,129 +193,150 @@ type NestedProps = {
 };
 
 const Nested: FunctionComponent<NestedProps> = memo(
-  ({
-    expandedPaths,
-    path,
-    onToggleExpand,
-    onClickPath,
-    startBracket,
-    endBracket,
-    getClassValue,
-    selectClassInstance,
-    isArray,
-    selectedStatePath,
-    value,
-    delimiter,
-    onSubmitState,
-  }) => {
-    const shouldCollapse = !expandedPaths.includes(path);
-    const isClass = value.__CLASS__;
-    const classValue: any = isClass
-      ? getClassValue(value.__CLASS__, value.__INSTANCE_ID__)
-      : null;
-    const className = isClass
-      ? `${value.__CLASS__} ${value.__INSTANCE_ID__}`
-      : null;
+  observer(
+    ({
+      expandedPaths,
+      path,
+      onToggleExpand,
+      onClickPath,
+      startBracket,
+      endBracket,
+      getClassValue,
+      selectClassInstance,
+      isArray,
+      selectedStatePath,
+      value,
+      delimiter,
+      onSubmitState,
+    }) => {
+      const shouldCollapse = !expandedPaths.includes(path);
+      const isClass = value.__CLASS__;
+      const classValue: any = isClass
+        ? getClassValue(value.__CLASS__, value.__INSTANCE_ID__)
+        : null;
+      const className = isClass
+        ? `${value.__CLASS__} ${value.__INSTANCE_ID__}`
+        : null;
 
-    if (onSubmitState && selectedStatePath && path === selectedStatePath) {
+      if (onSubmitState && selectedStatePath && path === selectedStatePath) {
+        return (
+          <InlineNested
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleExpand(path.split(delimiter));
+            }}
+          >
+            {path.length ? <Key>{path.split(delimiter).pop()}:</Key> : null}
+            <EditValue
+              value={isClass ? classValue : value}
+              onSubmit={onSubmitState}
+            />
+          </InlineNested>
+        );
+      }
+
+      if (shouldCollapse) {
+        const keys = isClass ? Object.keys(classValue) : Object.keys(value);
+
+        return (
+          <InlineNested
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleExpand(path.split(delimiter));
+            }}
+          >
+            <PathKey
+              path={path}
+              delimiter={delimiter}
+              onClickPath={onClickPath}
+              onToggleExpand={onToggleExpand}
+              disabled={!onSubmitState}
+            />
+            {startBracket}
+            <KeyCount>
+              {isArray ? (
+                value.length + " items"
+              ) : (
+                <InlineNested>
+                  {keys.sort().slice(0, 3).join(", ") + "..."}
+                </InlineNested>
+              )}
+            </KeyCount>
+            {endBracket}
+          </InlineNested>
+        );
+      }
+
       return (
-        <InlineNested
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleExpand(path.split(delimiter));
-          }}
-        >
-          {path.length ? <Key>{path.split(delimiter).pop()}:</Key> : null}
-          <EditValue
-            value={isClass ? classValue : value}
-            onSubmit={onSubmitState}
-          />
-        </InlineNested>
-      );
-    }
-
-    if (shouldCollapse) {
-      const keys = isClass ? Object.keys(classValue) : Object.keys(value);
-
-      return (
-        <InlineNested
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleExpand(path.split(delimiter));
-          }}
-        >
-          <PathKey
-            path={path}
-            delimiter={delimiter}
-            onClickPath={onClickPath}
-            onToggleExpand={onToggleExpand}
-            disabled={!onSubmitState}
-          />
-          {startBracket}
-          <KeyCount>
-            {isArray ? (
-              keys.length + " items"
-            ) : (
-              <InlineNested>
-                {keys.sort().slice(0, 3).join(", ") + "..."}
-              </InlineNested>
-            )}
-          </KeyCount>
-          {endBracket}
-        </InlineNested>
-      );
-    }
-
-    return (
-      <div>
-        <Bracket
-          pointer
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleExpand(path.split(delimiter));
-          }}
-        >
-          <PathKey
-            path={path}
-            delimiter={delimiter}
-            onClickPath={onClickPath}
-            onToggleExpand={onToggleExpand}
-            disabled={!onSubmitState}
-          />
-          {startBracket}
-        </Bracket>
-        <NestedChildren>
-          {Array.isArray(value)
-            ? value.map((_, index) =>
-                renderValue({
-                  path: path.concat((path ? delimiter : "") + String(index)),
-                  delimiter,
-                  value: value[index],
-                  expandedPaths,
-                  getClassValue,
-                  selectClassInstance,
-                  onClickPath,
-                  onSubmitState,
-                  onToggleExpand,
-                  selectedStatePath,
-                })
-              )
-            : isClass
-            ? [
-                <ClassInstanceLabel
-                  onClick={() => {
-                    selectClassInstance(value.__CLASS__, value.__INSTANCE_ID__);
-                  }}
-                  key={path.concat((path ? delimiter : "") + "__CLASS__")}
-                >
-                  {className}
-                </ClassInstanceLabel>,
-                ...Object.keys(classValue)
+        <div>
+          <Bracket
+            pointer
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleExpand(path.split(delimiter));
+            }}
+          >
+            <PathKey
+              path={path}
+              delimiter={delimiter}
+              onClickPath={onClickPath}
+              onToggleExpand={onToggleExpand}
+              disabled={!onSubmitState}
+            />
+            {startBracket}
+          </Bracket>
+          <NestedChildren>
+            {Array.isArray(value)
+              ? value.map((_, index) =>
+                  renderValue({
+                    path: path.concat((path ? delimiter : "") + String(index)),
+                    delimiter,
+                    value: value[index],
+                    expandedPaths,
+                    getClassValue,
+                    selectClassInstance,
+                    onClickPath,
+                    onSubmitState,
+                    onToggleExpand,
+                    selectedStatePath,
+                  })
+                )
+              : isClass
+              ? [
+                  <ClassInstanceLabel
+                    onClick={() => {
+                      selectClassInstance(
+                        value.__CLASS__,
+                        value.__INSTANCE_ID__
+                      );
+                    }}
+                    key={path.concat((path ? delimiter : "") + "__CLASS__")}
+                  >
+                    {className}
+                  </ClassInstanceLabel>,
+                  ...Object.keys(classValue)
+                    .sort()
+                    .map((key) => {
+                      return renderValue({
+                        path: path.concat((path ? delimiter : "") + key),
+                        value: classValue[key],
+                        delimiter,
+                        getClassValue,
+                        selectClassInstance,
+                        expandedPaths,
+                        onClickPath,
+                        onSubmitState,
+                        onToggleExpand,
+                        selectedStatePath,
+                      });
+                    }),
+                ]
+              : Object.keys(value)
                   .sort()
                   .map((key) => {
                     return renderValue({
                       path: path.concat((path ? delimiter : "") + key),
-                      value: classValue[key],
+                      value: value[key],
                       delimiter,
                       getClassValue,
                       selectClassInstance,
@@ -324,29 +346,13 @@ const Nested: FunctionComponent<NestedProps> = memo(
                       onToggleExpand,
                       selectedStatePath,
                     });
-                  }),
-              ]
-            : Object.keys(value)
-                .sort()
-                .map((key) => {
-                  return renderValue({
-                    path: path.concat((path ? delimiter : "") + key),
-                    value: value[key],
-                    delimiter,
-                    getClassValue,
-                    selectClassInstance,
-                    expandedPaths,
-                    onClickPath,
-                    onSubmitState,
-                    onToggleExpand,
-                    selectedStatePath,
-                  });
-                })}
-        </NestedChildren>
-        <Bracket pointer={false}>{endBracket}</Bracket>
-      </div>
-    );
-  }
+                  })}
+          </NestedChildren>
+          <Bracket pointer={false}>{endBracket}</Bracket>
+        </div>
+      );
+    }
+  )
 );
 
 type ValueComponentProps = {

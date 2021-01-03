@@ -283,7 +283,7 @@ export class ${classId} {
       ? `create${fromClassId}`
       : fromClassId[0].toLocaleLowerCase() + fromClassId.substr(1);
 
-    classNode.insertProperty(0, {
+    classNode.insertProperty(1, {
       name,
       hasExclamationToken: true,
       isReadonly: true,

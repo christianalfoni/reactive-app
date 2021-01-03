@@ -1,4 +1,4 @@
-import { action, computed, makeObservable, observable, when } from "mobx";
+import * as mobx from "mobx";
 import { IClass } from "../types";
 import { Factory } from "./Factory";
 
@@ -23,19 +23,39 @@ export class Feature {
       const configType = (props as any)[key];
 
       if (configType === "observable") {
-        observables[key] = observable;
+        observables[key] = mobx.observable;
       } else if (configType === "action") {
-        observables[key] = action;
+        observables[key] = mobx.action;
       } else if (configType === "computed") {
-        observables[key] = computed;
+        observables[key] = mobx.computed;
       }
     });
 
-    makeObservable(this, observables);
+    mobx.makeObservable(this, observables);
+  }
+  protected autorun(cb: () => void) {
+    if (typeof (this as any).onDispose === "function") {
+      return (this as any).onDispose(mobx.autorun(cb));
+    }
+
+    return mobx.autorun(cb);
+  }
+  protected reaction<T>(
+    value: () => T,
+    reaction: (value: T, previousValue: T) => void,
+    options?: {
+      fireImmediately?: boolean;
+    }
+  ) {
+    if (typeof (this as any).onDispose === "function") {
+      return (this as any).onDispose(mobx.reaction(value, reaction, options));
+    }
+
+    return mobx.reaction(value, reaction, options);
   }
   protected when(condition: () => boolean, cb?: () => void) {
     if (cb) {
-      const disposer = when(condition, cb);
+      const disposer = mobx.when(condition, cb);
 
       if (typeof (this as any).onDispose === "function") {
         const dispose = (this as any).onDispose(disposer);
@@ -49,7 +69,7 @@ export class Feature {
       return disposer;
     }
 
-    const disposer = when(condition);
+    const disposer = mobx.when(condition);
 
     if (typeof (this as any).onDispose === "function") {
       const dispose = (this as any).onDispose(disposer);
