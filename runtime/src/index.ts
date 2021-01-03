@@ -230,14 +230,6 @@ type ExtractMethods<T extends any> = {
   [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never;
 }[keyof T];
 
-interface MockMethods<T extends any> {
-  new (...args: any[]): T;
-  mockMethod<M extends ExtractMethods<T>>(
-    name: M,
-    method: (...params: Parameters<T[M]>) => ReturnType<T[M]>
-  ): void;
-}
-
 export function mock<T extends IClass<any>>(
   clas: T,
   methodMocks: T extends IClass<infer U>
@@ -247,7 +239,7 @@ export function mock<T extends IClass<any>>(
         ) => ReturnType<U[M]>;
       }
     : never
-): T & T extends IClass<infer U> ? MockMethods<U> : never {
+): T {
   return new Proxy(clas, {
     construct(target, args) {
       class Mock extends target {}
