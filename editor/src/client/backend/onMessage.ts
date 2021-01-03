@@ -66,7 +66,7 @@ function createClassNode({
 export const createOnMessage = (chart: IChart, backend: Backend) => {
   return (event: { data: any }) => {
     const message: BackendMessage = JSON.parse(event.data);
-    console.log(message);
+
     switch (message.type) {
       case "init": {
         Object.assign(backend, message.data);

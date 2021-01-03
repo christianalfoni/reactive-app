@@ -238,7 +238,13 @@ export const NodeInnerDefault = observer(
           {node.properties.methods.map((method) => {
             return (
               <Property key={method.name}>
-                <AiOutlineCode /> <span>{method.name}</span>
+                <AiOutlineCode
+                  style={{
+                    color:
+                      method.type === "action" ? colors.orange[400] : undefined,
+                  }}
+                />{" "}
+                <span>{method.name}</span>
               </Property>
             );
           })}
