@@ -18,7 +18,7 @@ export type TFeature<T extends IClass<any>> = TInjection<T>;
 function applyMixins(derivedCtor: any, constructors: any[]) {
   constructors.forEach((baseCtor) => {
     Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
-      if (name === "constructor") {
+      if (name === "constructor" || name in derivedCtor.prototype) {
         return;
       }
       Object.defineProperty(
@@ -48,6 +48,10 @@ export class Container<T extends IContainerConfig> {
     });
   }
   private register<U>(id: keyof T, SingletonOrFactory: IClass<U>) {
+    if (!Array.isArray(SingletonOrFactory.mixins)) {
+      throw new Error('Class is missing static property "mixins"');
+    }
+
     if (SingletonOrFactory.mixins) {
       const mixinDefinitions = SingletonOrFactory.mixins.map((key) => {
         if (!(key in mixins)) {
@@ -65,23 +69,6 @@ export class Container<T extends IContainerConfig> {
   }
   private errorInjectFeatures() {
     throw new Error("Features can only be injected in the constructor");
-  }
-  private makeObservable(props: any) {
-    const observables: any = {};
-
-    Object.keys(props).forEach((key) => {
-      const configType = (props as any)[key];
-
-      if (configType === "observable") {
-        observables[key] = observable;
-      } else if (configType === "action") {
-        observables[key] = action;
-      } else if (configType === "computed") {
-        observables[key] = computed;
-      }
-    });
-
-    makeObservable(this, observables);
   }
   private createInjectFeatures(instanceId: number) {
     const self = this;

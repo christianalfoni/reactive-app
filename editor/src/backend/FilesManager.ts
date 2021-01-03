@@ -420,9 +420,10 @@ export class ${classId} {
               },
             ],
           });
-          clas.addMethod({
+          const onMessage = clas.addMethod({
             name: "onMessage",
             returnType: "TState | void",
+
             parameters: [
               {
                 name: "message",
@@ -442,6 +443,7 @@ switch (message.type) {
 `,
             trailingTrivia: writeLineBreak,
           });
+          onMessage.toggleModifier("protected", true);
         }
         ast.toggleMixin(sourceFile, classId, mixin);
         ast.updateMakeObservable(clas, (config) => {

@@ -1,8 +1,22 @@
 import { Container, Factory, Feature, TFeature } from "../src";
 
 describe("Container", () => {
+  test("Should throw if class is missing static mixins property", () => {
+    class Test {
+      foo = "bar";
+    }
+
+    expect(
+      () =>
+        new Container({
+          // @ts-ignore
+          Test,
+        })
+    ).toThrow("mixins");
+  });
   test("Should instantiate a Container with singletons", () => {
     class Test {
+      static mixins = [];
       foo = "bar";
     }
 

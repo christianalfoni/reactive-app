@@ -5,7 +5,7 @@ export class StateMachine<
   M extends { type: string; [key: string]: unknown },
   S extends { current: string; [key: string]: unknown }
 > {
-  onMessage(message: M): S | void {
+  protected onMessage(message: M): S | void {
     throw new Error(`You have to implement the "onMessage" handler`);
   }
 
@@ -15,7 +15,7 @@ export class StateMachine<
       throw new Error("You have to add a state property to your statemachine");
     }
 
-    const newState = action(this.onMessage)(message);
+    const newState = action(this.onMessage.bind(this))(message);
 
     if (!newState) {
       return false;

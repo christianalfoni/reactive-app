@@ -4,7 +4,7 @@ export interface IOptions {
 
 export interface IClass<T> {
   new (...args: any[]): T;
-  mixins?: string[];
+  mixins: string[];
 }
 
 export interface IContainerConfig {
