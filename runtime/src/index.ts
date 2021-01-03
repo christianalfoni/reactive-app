@@ -239,26 +239,21 @@ interface MockMethods<T extends any> {
 }
 
 export function mock<T extends IClass<any>>(
-  clas: T
+  clas: T,
+  methodMocks: T extends IClass<infer U>
+    ? {
+        [M in ExtractMethods<U>]?: (
+          ...params: Parameters<U[M]>
+        ) => ReturnType<U[M]>;
+      }
+    : never
 ): T & T extends IClass<infer U> ? MockMethods<U> : never {
-  const methodMocks: any = {};
-
-  function mockMethod(name: string, method: Function) {
-    methodMocks[name] = method;
-  }
-
   return new Proxy(clas, {
     construct(target, args) {
-      const instance = new target(...args);
-      Object.assign(instance, methodMocks);
+      class Mock extends target {}
+      Object.assign(Mock.prototype, methodMocks);
+      const instance = Reflect.construct(Mock, args);
       return instance;
-    },
-    get(target, key) {
-      if (key === "mockMethod") {
-        return mockMethod;
-      }
-
-      return Reflect.get(target, key);
     },
   }) as any;
 }
