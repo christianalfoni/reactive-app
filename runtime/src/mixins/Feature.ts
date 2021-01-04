@@ -16,7 +16,11 @@ export class Feature {
   ): void {
     // This method is overriden by the container
   }
-  protected makeObservable(props: any) {
+  protected makeObservable(
+    props: {
+      [U in keyof this]?: string;
+    }
+  ) {
     const observables: any = {};
 
     Object.keys(props).forEach((key) => {
