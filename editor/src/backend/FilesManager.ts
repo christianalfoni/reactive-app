@@ -1,7 +1,7 @@
 import * as fs from "fs";
-import { property } from "lodash";
 import * as path from "path";
 
+import { property } from "lodash";
 import * as prettier from "prettier";
 import { Node, Project, StructureKind } from "ts-morph";
 import * as ts from "typescript";
@@ -414,11 +414,6 @@ export class ${classId} {
             name: "state",
             type: "TState",
             initializer: `{ current: "FOO" }`,
-            decorators: [
-              {
-                name: "observable",
-              },
-            ],
           });
           const onMessage = clas.addMethod({
             name: "onMessage",

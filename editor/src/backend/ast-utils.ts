@@ -1,24 +1,24 @@
 import {
-  CallExpression,
-  SourceFile,
   ArrayLiteralExpression,
-  ExpressionStatement,
-  InterfaceDeclaration,
-  StringLiteral,
+  CallExpression,
   ClassDeclaration,
-  ObjectLiteralExpression,
-  Node,
-  Statement,
-  MethodDeclaration,
-  StructureKind,
-  ConstructorDeclaration,
-  PropertyDeclaration,
-  GetAccessorDeclaration,
   ClassMemberTypes,
+  ConstructorDeclaration,
+  ExpressionStatement,
+  GetAccessorDeclaration,
+  InterfaceDeclaration,
+  MethodDeclaration,
+  Node,
+  ObjectLiteralExpression,
+  PropertyDeclaration,
+  SourceFile,
+  Statement,
+  StringLiteral,
+  StructureKind,
 } from "ts-morph";
 import * as ts from "typescript";
 
-import { Property, Method, Injector, Mixin } from "../common/types";
+import { Injector, Method, Mixin, Property } from "../common/types";
 import { writeLineBreak } from "./TsMorphFs";
 
 export function getClassNode(node: SourceFile, name: string): ClassDeclaration {
@@ -90,7 +90,8 @@ export function getProperties(node: ClassDeclaration) {
           (modifier) =>
             modifier.getKind() === ts.SyntaxKind.PrivateKeyword ||
             modifier.getKind() === ts.SyntaxKind.StaticKeyword ||
-            modifier.getKind() === ts.SyntaxKind.ReadonlyKeyword
+            modifier.getKind() === ts.SyntaxKind.ReadonlyKeyword ||
+            modifier.getKind() === ts.SyntaxKind.ProtectedKeyword
         )
     );
   }
@@ -119,7 +120,8 @@ export function getMethods(node: ClassDeclaration) {
       .find(
         (modifier) =>
           modifier.getKind() === ts.SyntaxKind.PrivateKeyword ||
-          modifier.getKind() === ts.SyntaxKind.StaticKeyword
+          modifier.getKind() === ts.SyntaxKind.StaticKeyword ||
+          modifier.getKind() === ts.SyntaxKind.ProtectedKeyword
       );
 
     if (shouldIgnore) {
