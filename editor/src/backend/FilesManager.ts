@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-
-import { property } from "lodash";
+import * as chokidar from "chokidar";
 import * as prettier from "prettier";
 import { Node, Project, StructureKind } from "ts-morph";
 import * as ts from "typescript";
@@ -26,7 +25,7 @@ try {
 }
 
 export class FilesManager {
-  private filesWatcher: fs.FSWatcher | undefined;
+  private filesWatcher: chokidar.FSWatcher | undefined;
   private project: Project = new Project({
     fileSystem: new TsMorphFs(prettierConfig),
   });
@@ -45,7 +44,13 @@ export class FilesManager {
     return `create${classId}`;
   }
 
-  private writePrettyFile(fileName: string, content: string) {
+  private async writePrettyFile(fileName: string, content: string) {
+    try {
+      await fs.promises.mkdir(path.dirname(fileName));
+    } catch {
+      // Already exists
+    }
+
     return fs.promises.writeFile(
       fileName,
       new TextEncoder().encode(
@@ -65,8 +70,11 @@ export class FilesManager {
     }
   }
 
-  private getAppSourceFile(fileName: string) {
-    const fullPath = path.resolve(APP_DIR, `${fileName}.ts`);
+  private getAppSourceFile(classId: string) {
+    const fullPath =
+      classId === "index"
+        ? path.resolve(APP_DIR, "index.ts")
+        : path.resolve(APP_DIR, classId, `index.ts`);
 
     const sourceFile = this.project.getSourceFile(fullPath);
 
@@ -153,23 +161,20 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   }
 
   private getClassIdFromFileName(fileName: string) {
-    return path.basename(fileName, ".ts");
+    return path.dirname(fileName).split(path.sep).pop()!;
   }
 
   private async getClasses() {
     const appDir = path.resolve(APP_DIR)!;
     try {
-      const files = (await fs.promises.readdir(appDir)).filter(
-        (file) =>
-          file !== "index.ts" &&
-          !file.endsWith(".test.ts") &&
-          !file.endsWith(".spec.ts")
+      const directories = (await fs.promises.readdir(appDir)).filter(
+        (file) => file !== "index.ts" && !file.endsWith(".ts")
       );
 
-      return files.reduce<{
+      return directories.reduce<{
         [key: string]: ExtractedClass;
-      }>((aggr, file) => {
-        const classId = path.basename(file, ".ts");
+      }>((aggr, directory) => {
+        const classId = directory;
 
         aggr[classId] = this.extractClass(classId);
 
@@ -206,7 +211,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     This method writes the initial file content
   */
   async writeClass(classId: string) {
-    const file = path.resolve(APP_DIR, classId + ".ts")!;
+    const file = path.resolve(APP_DIR, classId, "index.ts")!;
 
     await this.writeClassToEntryFile(classId);
     await this.writePrettyFile(
@@ -450,9 +455,9 @@ switch (message.type) {
   }
 
   async deleteClass(classId: string) {
-    const file = path.resolve(APP_DIR, classId + ".ts");
+    const directory = path.resolve(APP_DIR, classId);
 
-    await fs.promises.unlink(file);
+    await fs.promises.rmdir(directory, { recursive: true });
   }
 
   async renameClass(fromClassId: string, toClassId: string) {
@@ -460,21 +465,21 @@ switch (message.type) {
       classId: toClassId,
       ...this.metadata[fromClassId],
     });
-    const fromClassPath = path.resolve(APP_DIR, fromClassId + ".ts");
-    const toClassPath = path.resolve(APP_DIR, toClassId + ".ts");
+    const fromClassPath = path.resolve(APP_DIR, fromClassId, "index.ts");
+    const toClassPath = path.resolve(APP_DIR, toClassId, "index.ts");
     const fs = this.project.getFileSystem();
     const contents = fs.readFileSync(fromClassPath);
     const sourceFile = this.project.createSourceFile(toClassPath, contents);
 
     const classDefinition = sourceFile.getClass(fromClassId)!;
+    const classInterface = sourceFile.getInterface(fromClassId)!;
     classDefinition.rename(toClassId);
+    classInterface.rename(toClassId);
 
-    // Rename interface
-
+    fs.mkdirSync(path.resolve(APP_DIR, toClassId));
     fs.writeFileSync(toClassPath, sourceFile.print());
 
     await this.writeClassToEntryFile(toClassId);
-
     await this.deleteClass(fromClassId);
   }
 
@@ -487,68 +492,55 @@ switch (message.type) {
     await this.ensureAppDir();
     await this.ensureContainerEntry();
     this.classes = await this.getClasses();
-    this.filesWatcher = fs.watch(
-      path.resolve(APP_DIR),
-      async (eventType, fileName) => {
-        if (
-          fileName === "index.ts" ||
-          fileName.endsWith(".test.ts") ||
-          fileName.endsWith(".spec.ts")
-        ) {
-          return;
-        }
+    this.filesWatcher = chokidar.watch(`${path.resolve(APP_DIR)}/*/index.ts`);
+    this.filesWatcher.on("all", async (eventType, fileName) => {
+      if (eventType === "change") {
+        const updatedClass = await this.getClass(fileName);
+        this.classes[updatedClass.classId] = updatedClass;
+        listeners.onClassChange(updatedClass);
+      } else if (eventType === "add") {
+        const createdClass = await this.getClass(fileName);
+        this.classes[createdClass.classId] = createdClass;
+        listeners.onClassCreate(createdClass);
+      } else if (eventType === "unlink") {
+        const classId = this.getClassIdFromFileName(fileName);
+        delete this.classes[classId];
+        delete this.metadata[classId];
+        const file = path.resolve(CONFIGURATION_DIR, "metadata.json")!;
+        await this.writePrettyFile(
+          file,
+          JSON.stringify(this.metadata, null, 2)
+        );
+        const sourceFile = this.getAppSourceFile("index");
+        ast.removeImportDeclaration(sourceFile, `./${classId}`);
+        sourceFile
+          .getVariableDeclaration("container")
+          ?.getInitializer()
+          ?.transform((traversal) => {
+            const node = traversal.visitChildren();
 
-        if (eventType === "change") {
-          const updatedClass = await this.getClass(fileName);
-          this.classes[updatedClass.classId] = updatedClass;
-          listeners.onClassChange(updatedClass);
-        } else if (
-          eventType === "rename" &&
-          fs.existsSync(path.resolve(APP_DIR, fileName))
-        ) {
-          const createdClass = await this.getClass(fileName);
-          this.classes[createdClass.classId] = createdClass;
-          listeners.onClassCreate(createdClass);
-        } else {
-          const classId = this.getClassIdFromFileName(fileName);
-          delete this.classes[classId];
-          delete this.metadata[classId];
-          const file = path.resolve(CONFIGURATION_DIR, "metadata.json")!;
-          await this.writePrettyFile(
-            file,
-            JSON.stringify(this.metadata, null, 2)
-          );
-          const sourceFile = this.getAppSourceFile("index");
-          ast.removeImportDeclaration(sourceFile, `./${classId}`);
-          sourceFile
-            .getVariableDeclaration("container")
-            ?.getInitializer()
-            ?.transform((traversal) => {
-              const node = traversal.visitChildren();
+            if (
+              ts.isObjectLiteralExpression(node) &&
+              ts.isNewExpression(node.parent) &&
+              node.parent.arguments![0] === node
+            ) {
+              return ts.factory.createObjectLiteralExpression(
+                node.properties.filter(
+                  (property) =>
+                    !property.name ||
+                    !ts.isIdentifier(property.name) ||
+                    property.name.escapedText !== classId
+                ),
+                undefined
+              );
+            }
 
-              if (
-                ts.isObjectLiteralExpression(node) &&
-                ts.isNewExpression(node.parent) &&
-                node.parent.arguments![0] === node
-              ) {
-                return ts.factory.createObjectLiteralExpression(
-                  node.properties.filter(
-                    (property) =>
-                      !property.name ||
-                      !ts.isIdentifier(property.name) ||
-                      property.name.escapedText !== classId
-                  ),
-                  undefined
-                );
-              }
-
-              return node;
-            });
-          sourceFile.saveSync();
-          listeners.onClassDelete(classId);
-        }
+            return node;
+          });
+        sourceFile.saveSync();
+        listeners.onClassDelete(classId);
       }
-    );
+    });
   }
 
   getMetadata() {

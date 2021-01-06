@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import { Console } from "console";
 import { IncomingMessage } from "http";
 import * as path from "path";
 
@@ -133,6 +134,7 @@ export class Editor {
       case "class-new": {
         this.filesManager.writeClass(message.data.classId);
         this.filesManager.writeMetadata(message.data);
+        console.log("Written new file");
         break;
       }
       case "class-update": {
@@ -151,7 +153,20 @@ export class Editor {
         break;
       }
       case "class-open": {
-        spawn("code", [path.join(APP_DIR, message.data.classId + ".ts")]);
+        const child = spawn("code", [
+          path.join(APP_DIR, message.data.classId, "index.ts"),
+        ]);
+        child.on("error", () => {
+          const insidersChild = spawn("code-insiders", [
+            path.join(APP_DIR, message.data.classId, "index.ts"),
+          ]);
+          insidersChild.on("error", () => {
+            console.error(
+              "Neither 'code' or 'code-insiders' is installed on the PATH"
+            );
+          });
+        });
+
         break;
       }
       case "toggle-mixin":
