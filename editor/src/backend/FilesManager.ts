@@ -397,7 +397,6 @@ export class ${classId} {
           messageType.remove();
           onMessage.remove();
         } else {
-          ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "observable");
           const interfaceNodeIndex = classInterface!.getChildIndex();
           sourceFile.insertTypeAlias(interfaceNodeIndex, {
             name: "TState",

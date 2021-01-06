@@ -39,6 +39,7 @@ export const chart: IChart = observable({
   scale: 1,
   nodes: {},
   links: {},
+  linksByClassId: {},
   selected: {},
   hovered: {},
   state: "idle",
@@ -119,8 +120,6 @@ const chartEvents: { [key: string]: (...args: any[]) => void } = {
   }) as typeof actions.onLinkComplete,
   onLinkClick: (({ linkId }) => {
     const link = chart.links[linkId];
-
-    delete chart.links[linkId];
 
     send({
       type: "inject-remove",

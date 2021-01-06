@@ -6,6 +6,9 @@ export type IChart<ChartProps = undefined, LinkProps = undefined> = {
   nodes: {
     [id: string]: INode;
   };
+  linksByClassId: {
+    [classId: string]: string[];
+  };
   links: {
     [id: string]: ILink<LinkProps>;
   };

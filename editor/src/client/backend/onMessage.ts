@@ -93,6 +93,10 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
           Object.values(chart.links).forEach((link) => {
             if (link.to.nodeId === classId || link.from.nodeId === classId) {
               delete chart.links[link.id];
+              chart.linksByClassId[classId].splice(
+                chart.linksByClassId[classId].indexOf(link.id),
+                1
+              );
             }
           });
         })();
@@ -110,6 +114,14 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
             mixins,
           } = message.data;
 
+          // We remove all links, just to create them again. This solves
+          // when deleting links
+          if (chart.linksByClassId[classId]) {
+            chart.linksByClassId[classId].forEach((linkId) => {
+              delete chart.links[linkId];
+            });
+          }
+
           message.data.injectors.forEach((injector) => {
             const id = `${injector.classId}_${injector.propertyName}`;
             if (!chart.links[id] && injector.classId in chart.nodes) {
@@ -121,9 +133,13 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
                 },
                 to: {
                   portId: "input",
-                  nodeId: message.data.classId,
+                  nodeId: classId,
                 },
               };
+              if (!chart.linksByClassId[classId]) {
+                chart.linksByClassId[classId] = [];
+              }
+              chart.linksByClassId[classId].push(id);
             }
           });
 
