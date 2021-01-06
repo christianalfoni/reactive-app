@@ -383,25 +383,25 @@ export class ${classId} {
         ast.toggleMixinInterface(
           sourceFile,
           classId,
-          "StateMachine<TMessage, TState>"
+          "StateMachine<TMessage, TContext>"
         );
-        const stateType = sourceFile.getTypeAlias("TState");
+        const contextType = sourceFile.getTypeAlias("TContext");
         const messageType = sourceFile.getTypeAlias("TMessage");
         const classInterface = sourceFile.getInterface(classId);
         const clas = sourceFile.getClass(classId)!;
         const state = clas.getProperty("state");
         const onMessage = clas.getMethod("onMessage");
-        if (state && onMessage && stateType && messageType) {
+        if (state && onMessage && contextType && messageType) {
           state.remove();
-          stateType.remove();
+          contextType.remove();
           messageType.remove();
           onMessage.remove();
         } else {
           const interfaceNodeIndex = classInterface!.getChildIndex();
           sourceFile.insertTypeAlias(interfaceNodeIndex, {
-            name: "TState",
+            name: "TContext",
             isExported: true,
-            type: '{ current: "FOO" } | { current: "BAR" }',
+            type: '{ state: "FOO" } | { state: "BAR" }',
           });
           sourceFile.insertTypeAlias(interfaceNodeIndex, {
             name: "TMessage",
@@ -410,13 +410,13 @@ export class ${classId} {
             trailingTrivia: writeLineBreak,
           });
           clas.addProperty({
-            name: "state",
-            type: "TState",
-            initializer: `{ current: "FOO" }`,
+            name: "context",
+            type: "TContext",
+            initializer: `{ state: "FOO" }`,
           });
           const onMessage = clas.addMethod({
             name: "onMessage",
-            returnType: "TState | void",
+            returnType: "TContext | void",
 
             parameters: [
               {
@@ -427,11 +427,7 @@ export class ${classId} {
             statements: `
 switch (message.type) {
   case "TRANSITION": {
-    if (this.state.current === "FOO") {
-      return { current: "BAR" }
-    }
-
-    return { current: "FOO" }
+    return { state: "BAR" }
   }
 }
 `,
@@ -442,7 +438,7 @@ switch (message.type) {
         ast.toggleMixin(sourceFile, classId, mixin);
         ast.updateMakeObservable(clas, (config) => {
           config.addProperty({
-            name: "state",
+            name: "context",
             initializer: '"observable"',
             kind: StructureKind.PropertyAssignment,
           });

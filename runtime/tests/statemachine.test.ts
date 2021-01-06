@@ -4,9 +4,9 @@ describe("StateMachine", () => {
   test("Should throw error with missing state", () => {
     type TMessage = { type: "FOO" };
 
-    type TState = { current: "FOO" } | { current: "BAR" };
+    type TContext = { state: "FOO" } | { state: "BAR" };
 
-    interface Test extends Feature, StateMachine<TMessage, TState> {}
+    interface Test extends Feature, StateMachine<TMessage, TContext> {}
 
     class Test {
       static mixins = ["Feature", "StateMachine"];
@@ -23,15 +23,15 @@ describe("StateMachine", () => {
   test("Should throw error with missing onMessage", () => {
     type TMessage = { type: "FOO" };
 
-    type TState = { current: "FOO" } | { current: "BAR" };
+    type TContext = { state: "FOO" } | { state: "BAR" };
 
-    interface Test extends Feature, StateMachine<TMessage, TState> {}
+    interface Test extends Feature, StateMachine<TMessage, TContext> {}
 
     class Test {
       static mixins = ["Feature", "StateMachine"];
 
-      state: TState = {
-        current: "FOO",
+      context: TContext = {
+        state: "FOO",
       };
     }
 
@@ -46,19 +46,19 @@ describe("StateMachine", () => {
   test("Should change state by returning it from onMessage", () => {
     type TMessage = { type: "TRANSITION" };
 
-    type TState = { current: "FOO" } | { current: "BAR" };
+    type TContext = { state: "FOO" } | { state: "BAR" };
 
-    interface Test extends Feature, StateMachine<TMessage, TState> {}
+    interface Test extends Feature, StateMachine<TMessage, TContext> {}
 
     class Test {
       static mixins = ["Feature", "StateMachine"];
 
-      state: TState = {
-        current: "FOO",
+      context: TContext = {
+        state: "FOO",
       };
 
-      onMessage(message: TMessage): TState | void {
-        return { current: this.state.current === "FOO" ? "BAR" : "FOO" };
+      onMessage(message: TMessage): TContext | void {
+        return { state: this.context.state === "FOO" ? "BAR" : "FOO" };
       }
     }
 
@@ -68,31 +68,31 @@ describe("StateMachine", () => {
 
     const test = container.get("Test");
 
-    expect(test.state.current === "FOO");
+    expect(test.context.state === "FOO");
 
     test.send({ type: "TRANSITION" });
 
-    expect(test.state.current === "BAR");
+    expect(test.context.state === "BAR");
 
     test.send({ type: "TRANSITION" });
 
-    expect(test.state.current === "FOO");
+    expect(test.context.state === "FOO");
   });
   test("Should NOT change state when returning undefined", () => {
     type TMessage = { type: "TRANSITION" };
 
-    type TState = { current: "FOO" } | { current: "BAR" };
+    type TContext = { state: "FOO" } | { state: "BAR" };
 
-    interface Test extends Feature, StateMachine<TMessage, TState> {}
+    interface Test extends Feature, StateMachine<TMessage, TContext> {}
 
     class Test {
       static mixins = ["Feature", "StateMachine"];
 
-      state: TState = {
-        current: "FOO",
+      context: TContext = {
+        state: "FOO",
       };
 
-      protected onMessage(message: TMessage): TState | void {}
+      protected onMessage(message: TMessage): TContext | void {}
     }
 
     const container = new Container({
@@ -101,10 +101,10 @@ describe("StateMachine", () => {
 
     const test = container.get("Test");
 
-    expect(test.state.current === "FOO");
+    expect(test.context.state === "FOO");
 
     test.send({ type: "TRANSITION" });
 
-    expect(test.state.current === "FOO");
+    expect(test.context.state === "FOO");
   });
 });
