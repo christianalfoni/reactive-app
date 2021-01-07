@@ -82,13 +82,25 @@ export class Editor {
     switch (message.type) {
       case "init":
         const sendClasses = () => {
+          let hasUpdatedMetadata = false;
           this.sendEditorMessage({
             type: "classes",
-            data: Object.keys(this.filesManager.metadata).reduce<{
+            data: Object.keys(this.filesManager.classes).reduce<{
               [name: string]: Class;
             }>((aggr, classId) => {
               const clas = this.filesManager.classes[classId];
-              const mdata = this.filesManager.metadata[classId];
+              let mdata: { x: number; y: number };
+
+              if (!this.filesManager.metadata[classId]) {
+                this.filesManager.metadata[classId] = {
+                  x: 0,
+                  y: 0,
+                };
+                hasUpdatedMetadata = true;
+              }
+
+              mdata = this.filesManager.metadata[classId];
+
               aggr[classId] = {
                 x: mdata.x,
                 y: mdata.y,
@@ -98,6 +110,10 @@ export class Editor {
               return aggr;
             }, {}),
           });
+
+          if (hasUpdatedMetadata) {
+            this.filesManager.writeMetadata();
+          }
         };
 
         if (this.initializer && this.filesManager) {
@@ -133,12 +149,12 @@ export class Editor {
         return;
       case "class-new": {
         this.filesManager.writeClass(message.data.classId);
-        this.filesManager.writeMetadata(message.data);
+        this.filesManager.addMetadata(message.data);
         console.log("Written new file");
         break;
       }
       case "class-update": {
-        this.filesManager.writeMetadata(message.data);
+        this.filesManager.addMetadata(message.data);
         break;
       }
       case "inject": {

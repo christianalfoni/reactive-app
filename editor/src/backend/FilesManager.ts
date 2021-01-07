@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+
 import * as chokidar from "chokidar";
 import * as prettier from "prettier";
 import { Node, Project, StructureKind } from "ts-morph";
@@ -189,7 +190,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     This is where we map files to nodes and their metadata. Things
     like position and the ID of the node.
   */
-  async writeMetadata({
+  async addMetadata({
     classId,
     x,
     y,
@@ -198,12 +199,16 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
     x: number;
     y: number;
   }) {
-    const file = path.resolve(CONFIGURATION_DIR, "metadata.json")!;
-
     this.metadata[classId] = {
       x,
       y,
     };
+    this.writeMetadata();
+  }
+
+  async writeMetadata() {
+    const file = path.resolve(CONFIGURATION_DIR, "metadata.json")!;
+
     await this.writePrettyFile(file, JSON.stringify(this.metadata, null, 2));
   }
 
@@ -276,7 +281,12 @@ export class ${classId} {
     const sourceFile = this.getAppSourceFile(toClassId);
 
     ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "TFeature");
-    ast.addImportDeclaration(sourceFile, `./${fromClassId}`, fromClassId, true);
+    ast.addImportDeclaration(
+      sourceFile,
+      `../${fromClassId}`,
+      fromClassId,
+      true
+    );
 
     const classNode = sourceFile.getClass(toClassId);
 
@@ -461,7 +471,7 @@ switch (message.type) {
   }
 
   async renameClass(fromClassId: string, toClassId: string) {
-    await this.writeMetadata({
+    await this.addMetadata({
       classId: toClassId,
       ...this.metadata[fromClassId],
     });
