@@ -1,4 +1,5 @@
 import { action } from "mobx";
+
 import { IS_DISPOSED } from "./Factory";
 
 export class StateMachine<
@@ -15,6 +16,10 @@ export class StateMachine<
       throw new Error(
         "You have to add a context property to your statemachine"
       );
+    }
+
+    if ((this as any).isDisposed && (this as any).isDisposed()) {
+      return false;
     }
 
     const newContext = action(this.onMessage.bind(this))(message);
