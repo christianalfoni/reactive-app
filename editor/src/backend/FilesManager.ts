@@ -320,7 +320,7 @@ export class ${classId} {
   async removeInjection(fromClassId: string, toClassId: string) {
     const sourceFile = this.getAppSourceFile(toClassId);
 
-    ast.removeImportDeclaration(sourceFile, `./${fromClassId}`);
+    ast.removeImportDeclaration(sourceFile, `../${fromClassId}`);
 
     const classNode = sourceFile.getClass(toClassId);
 

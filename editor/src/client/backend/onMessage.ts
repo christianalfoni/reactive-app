@@ -136,9 +136,11 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
                   nodeId: classId,
                 },
               };
+
               if (!chart.linksByClassId[classId]) {
                 chart.linksByClassId[classId] = [];
               }
+
               chart.linksByClassId[classId].push(id);
             }
           });
@@ -166,58 +168,60 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
         break;
       }
       case "classes": {
-        chart.nodes = Object.keys(message.data).reduce<any>((aggr, key) => {
-          const {
-            classId,
-            x,
-            y,
-            injectors,
-            properties,
-            methods,
-            mixins,
-          } = message.data[key];
-          aggr[classId] = createClassNode({
-            classId,
-            x,
-            y,
-            injectors,
-            properties,
-            methods,
-            mixins,
-          });
-
-          return aggr;
-        }, {});
-        chart.links = observable(
-          Object.keys(message.data).reduce<any>((aggr, key) => {
-            const { classId } = message.data[key];
-
-            Object.assign(
-              aggr,
-              message.data[key].injectors.reduce<any>((aggr, injector) => {
-                const linkId = `${classId}_${injector.classId}_${injector.propertyName}`;
-
-                if (injector.classId in message.data) {
-                  aggr[linkId] = {
-                    id: linkId,
-                    from: {
-                      nodeId: injector.classId,
-                      portId: "output",
-                    },
-                    to: {
-                      nodeId: classId,
-                      portId: "input",
-                    },
-                  };
-                }
-
-                return aggr;
-              }, {})
-            );
+        action(() => {
+          chart.nodes = Object.keys(message.data).reduce<any>((aggr, key) => {
+            const {
+              classId,
+              x,
+              y,
+              injectors,
+              properties,
+              methods,
+              mixins,
+            } = message.data[key];
+            aggr[classId] = createClassNode({
+              classId,
+              x,
+              y,
+              injectors,
+              properties,
+              methods,
+              mixins,
+            });
 
             return aggr;
-          }, {})
-        );
+          }, {});
+
+          chart.links = observable({});
+
+          Object.keys(message.data).forEach((key) => {
+            const { classId } = message.data[key];
+
+            message.data[key].injectors.forEach((injector) => {
+              const linkId = `${classId}_${injector.classId}_${injector.propertyName}`;
+
+              if (injector.classId in message.data) {
+                chart.links[linkId] = {
+                  id: linkId,
+                  from: {
+                    nodeId: injector.classId,
+                    portId: "output",
+                  },
+                  to: {
+                    nodeId: classId,
+                    portId: "input",
+                  },
+                };
+              }
+
+              if (!chart.linksByClassId[classId]) {
+                chart.linksByClassId[classId] = [];
+              }
+
+              chart.linksByClassId[classId].push(linkId);
+            }, {});
+          });
+        })();
         break;
       }
       case "app": {
