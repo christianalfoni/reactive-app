@@ -505,7 +505,9 @@ switch (this.context.state) {
     await this.ensureAppDir();
     await this.ensureContainerEntry();
     this.classes = await this.getClasses();
-    this.filesWatcher = chokidar.watch(`${path.resolve(APP_DIR)}/*/index.ts`);
+    this.filesWatcher = chokidar.watch(`${path.resolve(APP_DIR)}/*/index.ts`, {
+      ignoreInitial: true,
+    });
     this.filesWatcher.on("all", async (eventType, fileName) => {
       if (eventType === "change") {
         const updatedClass = await this.getClass(fileName);

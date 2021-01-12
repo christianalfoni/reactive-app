@@ -1,12 +1,13 @@
 import { action, observable } from "mobx";
+
 import { colors } from "../../common/design-tokens";
 import {
-  Property,
   Backend,
   BackendMessage,
-  Method,
   Injector,
+  Method,
   Mixin,
+  Property,
 } from "../../common/types";
 import { IChart } from "../flow-chart/types/chart";
 
@@ -196,6 +197,10 @@ export const createOnMessage = (chart: IChart, backend: Backend) => {
 
           Object.keys(message.data).forEach((key) => {
             const { classId } = message.data[key];
+
+            if (classId === "Sandbox") {
+              // console.log(message.data[key].injectors);
+            }
 
             message.data[key].injectors.forEach((injector) => {
               const linkId = `${classId}_${injector.classId}_${injector.propertyName}`;
