@@ -398,10 +398,10 @@ export class ${classId} {
         ast.toggleMixinInterface(
           sourceFile,
           classId,
-          "StateMachine<TMessage, TContext>"
+          "StateMachine<TContext, TEvent>"
         );
         const contextType = sourceFile.getTypeAlias("TContext");
-        const messageType = sourceFile.getTypeAlias("TMessage");
+        const messageType = sourceFile.getTypeAlias("TEvent");
         const classInterface = sourceFile.getInterface(classId);
         const clas = sourceFile.getClass(classId)!;
         const state = clas.getProperty("state");
@@ -419,9 +419,9 @@ export class ${classId} {
             type: '{ state: "FOO" } | { state: "BAR" }',
           });
           sourceFile.insertTypeAlias(interfaceNodeIndex, {
-            name: "TMessage",
+            name: "TEvent",
             isExported: true,
-            type: '{ type: "TRANSITION" }',
+            type: '{ type: "SOMETHING_HAPPENED" }',
             trailingTrivia: writeLineBreak,
           });
           clas.addProperty({
@@ -429,26 +429,29 @@ export class ${classId} {
             type: "TContext",
             initializer: `{ state: "FOO" }`,
           });
-          const onMessage = clas.addMethod({
-            name: "onMessage",
+          const onEvent = clas.addMethod({
+            name: "onEvent",
             returnType: "TContext | void",
 
             parameters: [
               {
-                name: "message",
-                type: "TMessage",
+                name: "event",
+                type: "TEvent",
               },
             ],
             statements: `
-switch (message.type) {
-  case "TRANSITION": {
+switch (this.context.state) {
+  case "FOO": {
     return { state: "BAR" }
-  }
+	}
+	case "BAR": {
+		return { state: "FOO" }
+	}
 }
 `,
             trailingTrivia: writeLineBreak,
           });
-          onMessage.toggleModifier("protected", true);
+          onEvent.toggleModifier("protected", true);
         }
         ast.toggleMixin(sourceFile, classId, mixin);
         ast.updateMakeObservable(clas, (config) => {
