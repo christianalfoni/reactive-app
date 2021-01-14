@@ -36,14 +36,14 @@ function createClassNode({
         id: "input",
         type: "top",
         properties: {
-          linkColor: colors.purple[500],
+          linkColor: colors.gray[800],
         },
       },
       output: {
         id: "output",
         type: "bottom",
         properties: {
-          linkColor: colors.purple[500],
+          linkColor: colors.gray[800],
         },
       },
     },

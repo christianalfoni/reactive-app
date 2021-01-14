@@ -1,4 +1,6 @@
 import * as React from "react";
+
+import { colors } from "../../../../../common/design-tokens";
 import {
   IConfig,
   ILink,
@@ -37,6 +39,7 @@ export const RegularLink = ({
   isHovered,
   isSelected,
 }: IRegularLinkProps) => {
+  const color = isHovered ? colors.purple[500] : linkColor;
   return (
     <svg
       style={{
@@ -48,13 +51,13 @@ export const RegularLink = ({
       }}
       className={className}
     >
-      <circle r="4" cx={startPos.x} cy={startPos.y} fill={linkColor} />
+      <circle r="4" cx={startPos.x} cy={startPos.y} fill={color} />
       {/* Main line */}
-      <path d={points} stroke={linkColor} strokeWidth="3" fill="none" />
+      <path d={points} stroke={color} strokeWidth="3" fill="none" />
       {/* Thick line to make selection easier */}
       <path
         d={points}
-        stroke={linkColor}
+        stroke={color}
         strokeWidth="20"
         fill="none"
         strokeLinecap="round"
@@ -66,7 +69,7 @@ export const RegularLink = ({
           e.stopPropagation();
         }}
       />
-      <circle r="4" cx={endPos.x} cy={endPos.y} fill={linkColor} />
+      <circle r="4" cx={endPos.x} cy={endPos.y} fill={color} />
     </svg>
   );
 };

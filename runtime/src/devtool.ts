@@ -86,7 +86,10 @@ export class Devtool implements IDevtool {
   private _instanceIdToInstance: {
     [instanceId: number]: any;
   } = {};
-  private _onSpyInstantiation: ((change: TSpyChange) => void) | undefined;
+  private _onSpyInstantiation: (
+    | ((change: TSpyChange) => void)
+    | undefined
+  )[] = [];
   private onSpy(change: Parameters<Parameters<typeof spy>[0]>[0]) {
     switch (change.type) {
       case "add": {
@@ -242,8 +245,11 @@ export class Devtool implements IDevtool {
   }
   spy() {
     spy((change) => {
-      if (this._onSpyInstantiation) {
-        this._onSpyInstantiation(change);
+      const spyInstantiation = this._onSpyInstantiation[
+        this._onSpyInstantiation.length - 1
+      ];
+      if (spyInstantiation) {
+        spyInstantiation(change);
       }
       this.onSpy(change);
     });
@@ -251,7 +257,7 @@ export class Devtool implements IDevtool {
   setInstanceSpy(instanceId: number) {
     // We set the mobxId by spying on any added
     // observables
-    this._onSpyInstantiation = (change: any) => {
+    this._onSpyInstantiation.push((change: any) => {
       if (
         change.debugObjectName &&
         change.debugObjectName.match(/^[^.]*$/) &&
@@ -259,10 +265,10 @@ export class Devtool implements IDevtool {
       ) {
         this._mobxIdToInstanceId[change.debugObjectName] = instanceId;
       }
-    };
+    });
   }
   unsetInstanceSpy() {
-    this._onSpyInstantiation = undefined;
+    this._onSpyInstantiation.pop();
   }
   sendInstance(classId: string, instanceId: number, instance: any) {
     this._instanceIdToInstance[instanceId] = instance;

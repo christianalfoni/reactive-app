@@ -2,9 +2,9 @@ import { observer } from "mobx-react";
 import * as React from "react";
 import { AiOutlineCode } from "react-icons/ai";
 import { BiCurrentLocation } from "react-icons/bi";
+import { FiBox } from "react-icons/fi";
 import { GiFactory } from "react-icons/gi";
 import { HiCog, HiLink } from "react-icons/hi";
-import { FiBox } from "react-icons/fi";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
@@ -173,11 +173,11 @@ export const NodeInnerDefault = observer(
         </div>
         {node.properties.mixins.includes(Mixin.StateMachine) &&
         instanceId &&
-        node.properties.instances[instanceId].values.state ? (
+        node.properties.instances[instanceId].values.context ? (
           <StateProperty>
             <CurrentStateIcon />
             <CurrentState>
-              {node.properties.instances[instanceId].values.state.current}
+              {node.properties.instances[instanceId].values.context.state}
             </CurrentState>
           </StateProperty>
         ) : node.properties.mixins.includes(Mixin.StateMachine) ? (

@@ -431,8 +431,6 @@ export class ${classId} {
           });
           const onEvent = clas.addMethod({
             name: "onEvent",
-            returnType: "TContext | void",
-
             parameters: [
               {
                 name: "event",
@@ -440,14 +438,14 @@ export class ${classId} {
               },
             ],
             statements: `
-switch (this.context.state) {
-  case "FOO": {
-    return { state: "BAR" }
+return this.transition(this.context, event, {
+	FOO: {
+    SOMETHING_HAPPENED: () => ({ state: "BAR" })
+	},
+	BAR: {
+		SOMETHING_HAPPENED: () => ({ state: "FOO" })
 	}
-	case "BAR": {
-		return { state: "FOO" }
-	}
-}
+})
 `,
             trailingTrivia: writeLineBreak,
           });
