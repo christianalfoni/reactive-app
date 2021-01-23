@@ -116,7 +116,7 @@ export class FilesManager {
       await this.writePrettyFile(
         entryFile,
         `import { Container } from '${LIBRARY_IMPORT}'
-export const container = new Container({}, { devtool: process.env.NODE_ENV === 'development' ? "localhost:5051" : undefined })
+export const container = new Container({}, { devtool: process.env.NODE_ENV === 'development' && !window.opener ? "localhost:5051" : undefined })
 `
       );
     }
@@ -414,15 +414,15 @@ export class ${classId} {
         } else {
           const interfaceNodeIndex = classInterface!.getChildIndex();
           sourceFile.insertTypeAlias(interfaceNodeIndex, {
-            name: "TContext",
-            isExported: true,
-            type: '{ state: "FOO" } | { state: "BAR" }',
-          });
-          sourceFile.insertTypeAlias(interfaceNodeIndex, {
             name: "TEvent",
             isExported: true,
             type: '{ type: "SOMETHING_HAPPENED" }',
             trailingTrivia: writeLineBreak,
+          });
+          sourceFile.insertTypeAlias(interfaceNodeIndex, {
+            name: "TContext",
+            isExported: true,
+            type: '{ state: "FOO" } | { state: "BAR" }',
           });
           clas.addProperty({
             name: "context",
