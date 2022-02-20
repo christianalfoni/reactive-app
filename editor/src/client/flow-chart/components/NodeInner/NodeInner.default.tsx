@@ -173,11 +173,11 @@ export const NodeInnerDefault = observer(
         </div>
         {node.properties.mixins.includes(Mixin.StateMachine) &&
         instanceId &&
-        node.properties.instances[instanceId].values.context ? (
+        node.properties.instances[instanceId].values._state ? (
           <StateProperty>
             <CurrentStateIcon />
             <CurrentState>
-              {node.properties.instances[instanceId].values.context.state}
+              {node.properties.instances[instanceId].values._state.state}
             </CurrentState>
           </StateProperty>
         ) : node.properties.mixins.includes(Mixin.StateMachine) ? (

@@ -46,7 +46,7 @@ export class Feature {
   }
   protected reaction<T>(
     value: () => T,
-    reaction: (value: T, previousValue: T) => void,
+    reaction: (value: T, previousValue: T | undefined) => void,
     options?: {
       fireImmediately?: boolean;
     }

@@ -67,7 +67,6 @@ export type ClassInstance = {
 export enum Mixin {
   Factory = "Factory",
   StateMachine = "StateMachine",
-  View = "View",
   EventHub = "EventHub",
 }
 

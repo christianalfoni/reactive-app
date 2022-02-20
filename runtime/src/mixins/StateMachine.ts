@@ -1,88 +1,102 @@
-import { action } from "mobx";
+import { action, computed, makeObservable, observable } from "mobx";
 
-import { IS_DISPOSED } from "./Factory";
+type TState = {
+  state: string;
+};
 
-export type TBaseContext = { state: string; [key: string]: unknown };
+export type PickState<T extends TState, U extends T["state"]> = T & {
+  state: U;
+};
 
-export type TBaseEvent = { type: string; [key: string]: unknown };
+type TMatch<S extends TState, R = any> = {
+  [SS in S["state"]]: (state: S extends { state: SS } ? S : never) => R;
+};
 
-export type PickContext<
-  C extends TBaseContext,
-  S extends C["state"]
-> = C extends { state: S } ? C : never;
+export class StateMachine<S extends TState> {
+  private _state!: S;
+  private transitions!: {
+    [T in S["state"]]?: {
+      [U in S["state"]]?: Array<(state: S & { state: T }) => void>;
+    };
+  };
+  protected addTransition<T extends S["state"]>(
+    fromState: S["state"],
+    toState: T,
+    cb?: (state: S & { state: T }) => void
+  ) {
+    if (!this._state) {
+      throw new Error("You have to transition to an initial state first");
+    }
 
-export type PickEvent<E extends TBaseEvent, T extends E["type"]> = E extends {
-  type: T;
-}
-  ? E
-  : never;
+    if (!this.transitions) {
+      this.transitions = {};
+    }
 
-export class StateMachine<C extends TBaseContext, E extends TBaseEvent> {
-  context!: C;
+    if (!this.transitions[fromState]) {
+      this.transitions[fromState] = {};
+    }
+    // @ts-ignore
+    if (!this.transitions[fromState][toState]) {
+      // @ts-ignore
+      this.transitions[fromState][toState] = [];
+    }
 
-  protected onEvent(message: E): C | void {
-    throw new Error(`You have to implement the "onEvent" handler`);
+    if (cb) {
+      // @ts-ignore
+      this.transitions[fromState]![toState]!.push(action(cb));
+    }
   }
-
-  protected onEnter(newContext: C) {}
-
-  protected onExit(oldContext: C) {}
-
-  transition(
-    context: C,
-    event: E,
-    transitions: {
-      [S in C["state"]]: {
-        [T in E["type"]]?: (
-          event: E extends { type: T } ? E : never,
-          context: C extends { state: S } ? C : never
-        ) => C | void;
-      };
-    }
-  ): C | void {
-    if (!(transitions as any)[context.state][event.type]) {
-      return;
-    }
-
-    return (transitions as any)[context.state][event.type].call(
-      this,
-      context,
-      event
-    );
-  }
-
-  send(event: E): boolean {
-    if (!this.context) {
-      throw new Error(
-        "You have to add a context property to your statemachine"
-      );
-    }
-
-    if ((this as any).isDisposed && (this as any).isDisposed()) {
-      return false;
-    }
-
-    const newContext = action(this.onEvent.bind(this))(event);
-
-    if (!newContext) {
-      return false;
-    }
-
-    this.onExit(this.context);
-
-    if (newContext) {
-      // We automatically dispose of any disposables
-      Object.values(this.context).forEach((value: any) => {
-        if (value && value[IS_DISPOSED] === false) {
-          value.dispose();
-        }
+  protected transitionTo(state: S): boolean {
+    if (!this._state) {
+      this._state = state;
+      makeObservable(this, {
+        // @ts-ignore
+        _state: observable,
+        state: computed,
       });
+      return true;
+    }
+    const fromState = this._state.state;
+    const toState = state.state;
+    if (
+      // @ts-ignore
+      this.transitions[fromState] &&
+      // @ts-ignore
+      this.transitions[fromState][toState]
+    ) {
+      this._state = state;
+      // @ts-ignore
+      this.transitions[fromState][toState].forEach((cb) => {
+        cb(this._state);
+      });
+
+      return true;
     }
 
-    this.context = newContext;
+    return false;
+  }
+  get state() {
+    return this._state.state;
+  }
+  // @ts-ignore
+  match<S extends this["_state"], T extends TMatch<S>>(
+    matches: T &
+      {
+        [K in keyof T]: S extends TState
+          ? K extends S["state"]
+            ? T[K]
+            : never
+          : never;
+      }
+  ): {
+    [K in keyof T]: T[K] extends (...args: any[]) => infer R ? R : never;
+  }[keyof T] {
+    if (matches) {
+      // @ts-ignore This is an exhaustive check
+      return matches[this._state.state](this._state);
+    }
 
-    this.onEnter(this.context);
-
-    return true;
+    // @ts-ignore Too complex for TS to do this correctly
+    return (matches) => matches[this._state.state](this._state);
   }
 }

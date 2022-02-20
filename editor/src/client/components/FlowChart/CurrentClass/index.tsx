@@ -10,10 +10,10 @@ import { useBackend } from "../../../backend";
 import { Action } from "./Action";
 import { Method } from "./Method";
 import { Computed } from "./Computed";
+import { State } from "./State";
 import { Injector } from "./Injector";
 import { Observable } from "./Observable";
 import { Property } from "./Property";
-import { actions } from "../../../flow-chart";
 import { Getter } from "./Getter";
 
 const Wrapper = styled.div`
@@ -214,6 +214,11 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
           />
         ))}
       </div>
+      {node.properties.mixins.includes(Mixin.StateMachine) && (
+        <div>
+          <State instance={instance} />
+        </div>
+      )}
       <div>
         {node.properties.properties.map((property) => {
           if (property.type === "observable") {

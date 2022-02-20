@@ -5,16 +5,10 @@ import {
   ClassMemberTypes,
   ConstructorDeclaration,
   ExpressionStatement,
-  GetAccessorDeclaration,
-  InterfaceDeclaration,
-  MethodDeclaration,
   Node,
   ObjectLiteralExpression,
-  PropertyDeclaration,
   SourceFile,
-  Statement,
   StringLiteral,
-  StructureKind,
 } from "ts-morph";
 import * as ts from "typescript";
 
@@ -356,7 +350,8 @@ export function toggleMixinInterface(
       isExported: true,
       trailingTrivia: writeLineBreak,
     });
-    return;
+
+    return true;
   }
 
   const mixinTypeIndex = mixinInterface
@@ -366,8 +361,10 @@ export function toggleMixinInterface(
 
   if (hasMixin) {
     mixinInterface.removeExtends(mixinTypeIndex);
+    return false;
   } else {
     mixinInterface.addExtends([type]);
+    return true;
   }
 }
 

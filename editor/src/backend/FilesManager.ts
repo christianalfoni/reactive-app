@@ -116,7 +116,7 @@ export class FilesManager {
       await this.writePrettyFile(
         entryFile,
         `import { Container } from '${LIBRARY_IMPORT}'
-export const container = new Container({}, { devtool: process.env.NODE_ENV === 'development' && !window.opener ? "localhost:5051" : undefined })
+export const container = new Container({}, { devtool: process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !window.opener ? "localhost:5051" : undefined })
 `
       );
     }
@@ -124,7 +124,6 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
 
   private extractClass(classId: string) {
     const node = this.getAppSourceFile(classId);
-
     const classNode = ast.getClassNode(node, classId);
     const mixins = ast.getClassMixins(classNode);
     const injectors = ast.getInjectors(classNode);
@@ -167,9 +166,10 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
 
   private async getClasses() {
     const appDir = path.resolve(APP_DIR)!;
+
     try {
       const directories = (await fs.promises.readdir(appDir)).filter(
-        (file) => file !== "index.ts" && !file.endsWith(".ts")
+        (file) => !path.extname(file)
       );
 
       return directories.reduce<{
@@ -181,7 +181,8 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
 
         return aggr;
       }, {});
-    } catch {
+    } catch (error) {
+      console.log("WTF?", error);
       return {};
     }
   }
@@ -387,7 +388,6 @@ export class ${classId} {
     const sourceFile = this.getAppSourceFile(classId);
 
     switch (mixin) {
-      case "View":
       case "Factory":
         ast.toggleImportDeclaration(sourceFile, LIBRARY_IMPORT, mixin);
         ast.toggleMixinInterface(sourceFile, classId, mixin);
@@ -395,70 +395,33 @@ export class ${classId} {
         break;
       case "StateMachine":
         ast.toggleImportDeclaration(sourceFile, LIBRARY_IMPORT, mixin);
-        ast.toggleMixinInterface(
+        const hasAddedStateMachine = ast.toggleMixinInterface(
           sourceFile,
           classId,
-          "StateMachine<TContext, TEvent>"
+          "StateMachine<State>"
         );
-        const contextType = sourceFile.getTypeAlias("TContext");
-        const messageType = sourceFile.getTypeAlias("TEvent");
+        const stateType = sourceFile.getTypeAlias("State");
         const classInterface = sourceFile.getInterface(classId);
-        const clas = sourceFile.getClass(classId)!;
-        const state = clas.getProperty("state");
-        const onMessage = clas.getMethod("onMessage");
-        if (state && onMessage && contextType && messageType) {
-          state.remove();
-          contextType.remove();
-          messageType.remove();
-          onMessage.remove();
-        } else {
+
+        if (hasAddedStateMachine && !stateType) {
           const interfaceNodeIndex = classInterface!.getChildIndex();
           sourceFile.insertTypeAlias(interfaceNodeIndex, {
-            name: "TEvent",
-            isExported: true,
-            type: '{ type: "SOMETHING_HAPPENED" }',
-            trailingTrivia: writeLineBreak,
-          });
-          sourceFile.insertTypeAlias(interfaceNodeIndex, {
-            name: "TContext",
+            name: "State",
             isExported: true,
             type: '{ state: "FOO" } | { state: "BAR" }',
           });
-          clas.addProperty({
-            name: "context",
-            type: "TContext",
-            initializer: `{ state: "FOO" }`,
-          });
-          const onEvent = clas.addMethod({
-            name: "onEvent",
-            parameters: [
-              {
-                name: "event",
-                type: "TEvent",
-              },
-            ],
-            statements: `
-return this.transition(this.context, event, {
-	FOO: {
-    SOMETHING_HAPPENED: () => ({ state: "BAR" })
-	},
-	BAR: {
-		SOMETHING_HAPPENED: () => ({ state: "FOO" })
-	}
-})
-`,
-            trailingTrivia: writeLineBreak,
-          });
-          onEvent.toggleModifier("protected", true);
+          ast.updateConstructor(
+            ast.getClassNode(sourceFile, classId),
+            (constr) => {
+              constr.insertStatements(0, [
+                'this.transitionTo({ state: "FOO" })',
+              ]);
+            }
+          );
+        } else if (stateType) {
+          stateType.remove();
         }
         ast.toggleMixin(sourceFile, classId, mixin);
-        ast.updateMakeObservable(clas, (config) => {
-          config.addProperty({
-            name: "context",
-            initializer: '"observable"',
-            kind: StructureKind.PropertyAssignment,
-          });
-        });
         break;
     }
 
@@ -503,6 +466,7 @@ return this.transition(this.context, event, {
     await this.ensureAppDir();
     await this.ensureContainerEntry();
     this.classes = await this.getClasses();
+
     this.filesWatcher = chokidar.watch(`${path.resolve(APP_DIR)}/*/index.ts`, {
       ignoreInitial: true,
     });

@@ -14,9 +14,9 @@
     "test": "jest"
   },
   "dependencies": {
-    "chokidar": "^2.1.8",
-    "electron": "^11.1.1",
-    "mobx": "^6.0.3",
+    "chokidar": "^3.5.3",
+    "electron": "^17.0.1",
+    "mobx": "^6.4.0",
     "prettier": "^2.1.2",
     "ts-morph": "^9.1.0"
   },

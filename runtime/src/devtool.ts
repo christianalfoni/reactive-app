@@ -121,7 +121,7 @@ export class Devtool implements IDevtool {
           type: "update",
           data: {
             instanceId: this._mobxIdToInstanceId[id],
-            classId: id.substr(0, id.indexOf("@")),
+            classId: id.slice(0, id.indexOf("@")),
             value,
             path,
           },
@@ -272,6 +272,7 @@ export class Devtool implements IDevtool {
   }
   sendInstance(classId: string, instanceId: number, instance: any) {
     this._instanceIdToInstance[instanceId] = instance;
+    console.log("WTF?", classId, instanceId, instance);
     this.send({
       type: "instance",
       data: {

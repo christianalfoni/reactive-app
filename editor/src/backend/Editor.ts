@@ -1,5 +1,4 @@
 import { spawn } from "child_process";
-import { Console } from "console";
 import { IncomingMessage } from "http";
 import * as path from "path";
 
@@ -83,32 +82,34 @@ export class Editor {
       case "init":
         const sendClasses = () => {
           let hasUpdatedMetadata = false;
+          const data = Object.keys(this.filesManager.classes).reduce<{
+            [name: string]: Class;
+          }>((aggr, classId) => {
+            const clas = this.filesManager.classes[classId];
+            let mdata: { x: number; y: number };
+
+            if (!this.filesManager.metadata[classId]) {
+              this.filesManager.metadata[classId] = {
+                x: 0,
+                y: 0,
+              };
+              hasUpdatedMetadata = true;
+            }
+
+            mdata = this.filesManager.metadata[classId];
+
+            aggr[classId] = {
+              x: mdata.x,
+              y: mdata.y,
+              ...clas,
+            };
+
+            return aggr;
+          }, {});
+
           this.sendEditorMessage({
             type: "classes",
-            data: Object.keys(this.filesManager.classes).reduce<{
-              [name: string]: Class;
-            }>((aggr, classId) => {
-              const clas = this.filesManager.classes[classId];
-              let mdata: { x: number; y: number };
-
-              if (!this.filesManager.metadata[classId]) {
-                this.filesManager.metadata[classId] = {
-                  x: 0,
-                  y: 0,
-                };
-                hasUpdatedMetadata = true;
-              }
-
-              mdata = this.filesManager.metadata[classId];
-
-              aggr[classId] = {
-                x: mdata.x,
-                y: mdata.y,
-                ...clas,
-              };
-
-              return aggr;
-            }, {}),
+            data,
           });
 
           if (hasUpdatedMetadata) {
