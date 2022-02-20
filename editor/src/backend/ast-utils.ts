@@ -154,7 +154,7 @@ export function updateConstructor(
 
 export function getConstructorConfig(
   constr: ConstructorDeclaration,
-  name: "makeObservable" | "injectFeatures"
+  name: "makeObservable" | "injectFeatures" | "transitionTo" | "addTransition"
 ) {
   const callExpression = constr.getFirstDescendant((node) => {
     if (!Node.isCallExpression(node)) {
@@ -172,6 +172,23 @@ export function getConstructorConfig(
   if (callExpression) {
     return callExpression.getArguments()[0] as ObjectLiteralExpression;
   }
+}
+
+export function getConstructorStateMachineCalls(
+  constr: ConstructorDeclaration
+) {
+  return constr.getDescendants().filter((node) => {
+    if (!Node.isCallExpression(node)) {
+      return false;
+    }
+    const expression = node.getExpression();
+
+    if (!Node.isPropertyAccessExpression(expression)) {
+      return false;
+    }
+
+    return ["transitionTo", "addTransition"].includes(expression.getName());
+  }) as CallExpression[];
 }
 
 export function updateMakeObservable(

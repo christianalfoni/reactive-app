@@ -420,6 +420,14 @@ export class ${classId} {
           );
         } else if (stateType) {
           stateType.remove();
+          ast.updateConstructor(
+            ast.getClassNode(sourceFile, classId),
+            (constr) => {
+              ast.getConstructorStateMachineCalls(constr).forEach((expr) => {
+                constr.removeStatement(expr.getChildIndex());
+              });
+            }
+          );
         }
         ast.toggleMixin(sourceFile, classId, mixin);
         break;
