@@ -281,7 +281,6 @@ export class ${classId} {
   }) {
     const sourceFile = this.getAppSourceFile(toClassId);
 
-    ast.addImportDeclaration(sourceFile, LIBRARY_IMPORT, "TFeature");
     ast.addImportDeclaration(
       sourceFile,
       `../${fromClassId}`,
@@ -299,21 +298,14 @@ export class ${classId} {
       ? `create${fromClassId}`
       : fromClassId[0].toLocaleLowerCase() + fromClassId.substr(1);
 
-    classNode.insertProperty(1, {
-      name,
-      hasExclamationToken: true,
-      isReadonly: true,
-      type: `TFeature<typeof ${fromClassId}>`,
-      trailingTrivia: writeLineBreak,
-    });
-
-    ast.updateInjectFeatures(classNode, (config) => {
-      config.addProperty({
+    classNode
+      .insertProperty(1, {
         name,
-        kind: StructureKind.PropertyAssignment,
-        initializer: `"${fromClassId}"`,
-      });
-    });
+        trailingTrivia: writeLineBreak,
+      })
+      .toggleModifier("private");
+
+    ast.updateInjectFeature(classNode, name, fromClassId);
 
     sourceFile.saveSync();
   }
@@ -339,23 +331,6 @@ export class ${classId} {
         );
       })
       ?.remove();
-
-    ast.updateInjectFeatures(classNode, (config) => {
-      const property = config.getProperty((property) => {
-        if (!Node.isPropertyAssignment(property)) {
-          return false;
-        }
-        const initializer = property.getInitializer();
-
-        if (!Node.isStringLiteral(initializer)) {
-          return false;
-        }
-
-        return JSON.parse(initializer.getText()) === fromClassId;
-      });
-
-      property?.remove();
-    });
 
     sourceFile.saveSync();
   }

@@ -4,10 +4,7 @@ import { FiBox } from "react-icons/fi";
 import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
-import {
-  ClassInstance,
-  Property
-} from "../../../../common/types";
+import { ClassInstance, Property } from "../../../../common/types";
 import ValueInspector from "../../ValueInspector";
 
 const EditCurrentValueContainer = styled.div`
@@ -32,12 +29,12 @@ export const Observable = observer(
     id,
     property,
     instance,
-    toggleObservable
+    toggleObservable,
   }: {
-    id: string,
+    id: string;
     property: Property;
     instance: ClassInstance | null;
-    toggleObservable: (id: string, property: Property) => void
+    toggleObservable: (id: string, property: Property) => void;
   }) => {
     return (
       <ObservableWrapper>

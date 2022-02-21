@@ -221,36 +221,34 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
       )}
       <div>
         {node.properties.properties.map((property) => {
-          if (property.type === "observable") {
-            return (
-              <Observable
-                key={property.name}
-                id={id}
-                property={property}
-                instance={instance}
-                toggleObservable={backend.actions.onToggleObservable}
-              />
-            );
-          }
-
-          if (property.type === "computed") {
-            return (
-              <Computed
-                key={property.name}
-                id={id}
-                property={property}
-                instance={instance}
-                toggleComputed={backend.actions.onToggleComputed}
-              />
-            );
-          }
-
           if (property.type === "getter") {
             return (
               <Getter
                 key={property.name}
                 id={id}
                 property={property}
+                toggleComputed={backend.actions.onToggleComputed}
+              />
+            );
+          }
+
+          return (
+            <Observable
+              key={property.name}
+              id={id}
+              property={property}
+              instance={instance}
+              toggleObservable={backend.actions.onToggleObservable}
+            />
+          );
+
+          if (property.type === "getter") {
+            return (
+              <Computed
+                key={property.name}
+                id={id}
+                property={property}
+                instance={instance}
                 toggleComputed={backend.actions.onToggleComputed}
               />
             );

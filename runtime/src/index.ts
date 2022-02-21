@@ -4,6 +4,7 @@ import { Devtool } from "./devtool";
 import * as mixins from "./mixins";
 import { IClass, IContainerConfig, IOptions } from "./types";
 import { TInjection } from "./mixins/Feature";
+import { makeAutoObservable } from "mobx";
 
 export * from "mobx";
 
@@ -12,6 +13,8 @@ export * from "./mixins";
 export * from "./types";
 
 export type TFeature<T extends IClass<any>> = TInjection<T>;
+
+const INJECT_FEATURE = Symbol("INJECT_FEATURE");
 
 function applyMixins(derivedCtor: any, constructors: any[]) {
   constructors.forEach((baseCtor) => {
@@ -65,8 +68,10 @@ export class Container<T extends IContainerConfig> {
 
     this._classes.set(id, SingletonOrFactory);
   }
-  private errorInjectFeatures() {
-    throw new Error("Features can only be injected in the constructor");
+  private errorInjectFeature() {
+    throw new Error(
+      "Features can only be injected when constructing the class"
+    );
   }
   private createInjectFeatures(instanceId: number) {
     const self = this;
@@ -132,17 +137,70 @@ export class Container<T extends IContainerConfig> {
     const instanceId = this._currentClassId++;
     const proxy = new Proxy(constr, {
       construct: function (target, args) {
-        constr.prototype.injectFeatures = self.createInjectFeatures(instanceId);
+        const injectFeatures = self.createInjectFeatures(instanceId);
+        constr.prototype.injectFeature = (feature: string) => ({
+          feature,
+          [INJECT_FEATURE]: true,
+        });
 
         self._devtool?.setInstanceSpy(instanceId);
 
         const instance = Reflect.construct(constr, args);
 
+        const injectFeatureProps = Object.keys(instance).reduce<string[]>(
+          (aggr, key) => {
+            if (instance[key] && instance[key][INJECT_FEATURE]) {
+              return aggr.concat(key);
+            }
+
+            return aggr;
+          },
+          []
+        );
+
+        injectFeatures.call(
+          instance,
+          injectFeatureProps.reduce<Record<string, string>>((aggr, key) => {
+            aggr[key] = instance[key].feature;
+
+            return aggr;
+          }, {})
+        );
+
+        try {
+          makeAutoObservable(
+            instance,
+            injectFeatureProps.reduce<Record<string, false>>(
+              (aggr, key) => {
+                aggr[key] = false;
+
+                return aggr;
+              },
+              {
+                injectFeature: false,
+                runInAction: false,
+                reaction: false,
+                when: false,
+                addTransition: false,
+                transitionTo: false,
+                match: false,
+                isDisposed: false,
+                dispose: false,
+                onDispose: false,
+                on: false,
+                emit: false,
+              }
+            )
+          );
+        } catch {
+          // Already made observable by factory for example
+        }
+
         self._devtool?.unsetInstanceSpy();
 
         instance[INSTANCE_ID] = instanceId;
 
-        constr.prototype.injectFeatures = self.errorInjectFeatures;
+        constr.prototype.injectFeature = self.errorInjectFeature;
 
         return instance;
       },

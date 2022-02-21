@@ -25,19 +25,12 @@ const CurrentStateIcon = styled(BiCurrentLocation)`
 
 export const State = observer(
   ({ instance }: { instance: ClassInstance | null }) => {
-    const state = instance && instance.values._state;
+    const state = instance && instance.values.state;
 
     return (
       <StateWrapper>
         <CurrentStateIcon />
         {state && state.state}
-        <div>
-          <EditCurrentValueContainer>
-            {state ? (
-              <ValueInspector small value={state} delimiter="." />
-            ) : null}
-          </EditCurrentValueContainer>
-        </div>
       </StateWrapper>
     );
   }

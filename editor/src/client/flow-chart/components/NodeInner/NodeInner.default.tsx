@@ -133,7 +133,12 @@ export const NodeInnerDefault = observer(
     }, [node.properties.isEditing]);
 
     return (
-      <Outer className={className}>
+      <Outer
+        className={className}
+        style={{
+          opacity: instanceId ? 1 : 0.75,
+        }}
+      >
         <div>
           {node.properties.isEditing ? (
             <div>
@@ -173,11 +178,11 @@ export const NodeInnerDefault = observer(
         </div>
         {node.properties.mixins.includes(Mixin.StateMachine) &&
         instanceId &&
-        node.properties.instances[instanceId].values._state ? (
+        node.properties.instances[instanceId].values.state ? (
           <StateProperty>
             <CurrentStateIcon />
             <CurrentState>
-              {node.properties.instances[instanceId].values._state.state}
+              {node.properties.instances[instanceId].values.state.state}
             </CurrentState>
           </StateProperty>
         ) : node.properties.mixins.includes(Mixin.StateMachine) ? (
@@ -221,17 +226,7 @@ export const NodeInnerDefault = observer(
                     }}
                   />
                 )}
-                <span>
-                  {property.name}{" "}
-                  {instanceId &&
-                  node.properties.instances[instanceId].values[property.name]
-                    ? renderValue(
-                        node.properties.instances[instanceId].values[
-                          property.name
-                        ]
-                      )
-                    : null}
-                </span>
+                <span>{property.name}</span>
               </Property>
             );
           })}

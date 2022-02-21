@@ -44,46 +44,4 @@ export class Factory {
 
     this[IS_DISPOSED] = true;
   }
-
-  resolve<T>(
-    promise: Promise<T>,
-    resolvers: {
-      rejected: (error: Error) => void;
-      resolved: (data: T) => void;
-    }
-  ): Promise<void>;
-  resolve<T>(promise: Promise<T>): Promise<T>;
-  resolve<T>(
-    promise: Promise<T>,
-    resolvers?: {
-      rejected: (error: Error) => void;
-      resolved: (data: T) => void;
-    }
-  ) {
-    if (resolvers) {
-      return promise
-        .then((data) => {
-          if (this[IS_DISPOSED]) {
-            throw new Error("Disposed");
-          }
-
-          return action(resolvers.resolved)(data);
-        })
-        .catch((error) => {
-          if (this[IS_DISPOSED]) {
-            return;
-          }
-
-          return action(resolvers.rejected)(error);
-        }) as any;
-    }
-
-    return promise.then((data) => {
-      if (this[IS_DISPOSED]) {
-        throw new Error("Disposed");
-      }
-
-      return data;
-    }) as any;
-  }
 }

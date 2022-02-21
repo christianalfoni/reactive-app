@@ -1,4 +1,5 @@
 import * as mobx from "mobx";
+import { TFeature } from "..";
 import { IClass } from "../types";
 import { Factory } from "./Factory";
 
@@ -9,18 +10,12 @@ export type TInjection<T extends IClass<any>> = T extends IClass<infer O>
   : never;
 
 export class Feature {
-  protected injectFeatures(
-    props: {
-      [U in keyof this]?: string;
-    }
-  ): void {
+  protected injectFeature<T extends IClass<any>>(feature: string): TFeature<T> {
     // This method is overriden by the container
+    return {} as any;
   }
-  protected makeObservable(
-    props: {
-      [U in keyof this]?: string;
-    }
-  ) {
+
+  protected makeObservable(props: { [key: string]: string }) {
     const observables: any = {};
 
     Object.keys(props).forEach((key) => {
@@ -36,6 +31,9 @@ export class Feature {
     });
 
     mobx.makeObservable(this, observables);
+  }
+  protected runInAction(cb: () => void) {
+    return mobx.runInAction(cb);
   }
   protected autorun(cb: () => void) {
     if (typeof (this as any).onDispose === "function") {

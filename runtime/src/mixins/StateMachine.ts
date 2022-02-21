@@ -1,4 +1,4 @@
-import { action, computed, makeObservable, observable } from "mobx";
+import { action, runInAction } from "mobx";
 
 type TState = {
   state: string;
@@ -13,7 +13,6 @@ type TMatch<S extends TState, R = any> = {
 };
 
 export class StateMachine<S extends TState> {
-  private _state!: S;
   private transitions!: {
     [T in S["state"]]?: {
       [U in S["state"]]?: Array<(state: S & { state: T }) => void>;
@@ -24,7 +23,8 @@ export class StateMachine<S extends TState> {
     toState: T,
     cb?: (state: S & { state: T }) => void
   ) {
-    if (!this._state) {
+    //@ts-ignore
+    if (!this.state) {
       throw new Error("You have to transition to an initial state first");
     }
 
@@ -46,17 +46,18 @@ export class StateMachine<S extends TState> {
       this.transitions[fromState]![toState]!.push(action(cb));
     }
   }
-  protected transitionTo(state: S): boolean {
-    if (!this._state) {
-      this._state = state;
-      makeObservable(this, {
-        // @ts-ignore
-        _state: observable,
-        state: computed,
-      });
-      return true;
+  protected transitionTo(stateOrCallback: S | ((current: S) => S)): boolean {
+    //@ts-ignore
+    if (!this.state) {
+      throw new Error("You have to transition to an initial state first");
     }
-    const fromState = this._state.state;
+    const state =
+      typeof stateOrCallback === "function"
+        ? //@ts-ignore
+          stateOrCallback(this.state)
+        : stateOrCallback;
+    //@ts-ignore
+    const fromState = this.state.state;
     const toState = state.state;
     if (
       // @ts-ignore
@@ -64,10 +65,15 @@ export class StateMachine<S extends TState> {
       // @ts-ignore
       this.transitions[fromState][toState]
     ) {
-      this._state = state;
+      runInAction(() => {
+        //@ts-ignore
+        this.state = state;
+      });
+
       // @ts-ignore
       this.transitions[fromState][toState].forEach((cb) => {
-        cb(this._state);
+        //@ts-ignore
+        cb(this.state);
       });
 
       return true;
@@ -75,11 +81,9 @@ export class StateMachine<S extends TState> {
 
     return false;
   }
-  get state() {
-    return this._state.state;
-  }
+
   // @ts-ignore
-  match<S extends this["_state"], T extends TMatch<S>>(
+  match<T extends TMatch<S>>(
     matches: T &
       {
         [K in keyof T]: S extends TState
@@ -93,10 +97,10 @@ export class StateMachine<S extends TState> {
   }[keyof T] {
     if (matches) {
       // @ts-ignore This is an exhaustive check
-      return matches[this._state.state](this._state);
+      return matches[this.state.state](this.state);
     }
 
     // @ts-ignore Too complex for TS to do this correctly
-    return (matches) => matches[this._state.state](this._state);
+    return (matches) => matches[this.state.state](this.state);
   }
 }

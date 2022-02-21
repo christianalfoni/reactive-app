@@ -4,9 +4,11 @@ import {
   ClassDeclaration,
   ClassMemberTypes,
   ConstructorDeclaration,
+  Expression,
   ExpressionStatement,
   Node,
   ObjectLiteralExpression,
+  PropertyDeclaration,
   SourceFile,
   StringLiteral,
 } from "ts-morph";
@@ -45,32 +47,33 @@ export function getClassMixins(node: ClassDeclaration): Mixin[] {
   return elements.map((element) => JSON.parse(element.getText()) as Mixin);
 }
 
+export function getInjectionName(property: PropertyDeclaration): string | void {
+  const initializer = property.getInitializer();
+
+  if (!initializer || !Node.isCallExpression(initializer)) {
+    return;
+  }
+
+  if (initializer.getFullText().includes("injectFeature")) {
+    return JSON.parse(initializer.getArguments()[0].getText());
+  }
+}
+
 export function getInjectors(node: ClassDeclaration): Injector[] {
-  const constr = node.getConstructors()[0];
+  const properties = node.getProperties();
 
-  if (!constr) {
-    return [];
-  }
+  const injectors = properties.reduce<Injector[]>((aggr, property) => {
+    const injectionName = getInjectionName(property);
 
-  const config = getConstructorConfig(constr, "injectFeatures");
-
-  if (!config) {
-    return [];
-  }
-
-  const injectors: Injector[] = [];
-
-  config.getProperties().forEach((property) => {
-    if (Node.isPropertyAssignment(property)) {
-      const name = property.getName();
-      const value = property.getInitializer() as StringLiteral;
-
-      injectors.push({
-        propertyName: name,
-        classId: JSON.parse(value.getText()),
+    if (injectionName) {
+      return aggr.concat({
+        propertyName: property.getName(),
+        classId: injectionName,
       });
     }
-  });
+
+    return aggr;
+  }, []);
 
   return injectors;
 }
@@ -78,15 +81,13 @@ export function getInjectors(node: ClassDeclaration): Injector[] {
 export function getProperties(node: ClassDeclaration) {
   function shouldIgnore(member: ClassMemberTypes) {
     return Boolean(
-      member
-        .getModifiers()
-        .find(
-          (modifier) =>
-            modifier.getKind() === ts.SyntaxKind.PrivateKeyword ||
-            modifier.getKind() === ts.SyntaxKind.StaticKeyword ||
-            modifier.getKind() === ts.SyntaxKind.ReadonlyKeyword ||
-            modifier.getKind() === ts.SyntaxKind.ProtectedKeyword
-        )
+      member.getModifiers().find(
+        (modifier) =>
+          // modifier.getKind() === ts.SyntaxKind.PrivateKeyword ||
+          modifier.getKind() === ts.SyntaxKind.StaticKeyword ||
+          modifier.getKind() === ts.SyntaxKind.ReadonlyKeyword ||
+          modifier.getKind() === ts.SyntaxKind.ProtectedKeyword
+      )
     );
   }
   return node.getMembers().reduce<Property[]>((aggr, member) => {
@@ -154,7 +155,7 @@ export function updateConstructor(
 
 export function getConstructorConfig(
   constr: ConstructorDeclaration,
-  name: "makeObservable" | "injectFeatures" | "transitionTo" | "addTransition"
+  name: "makeObservable"
 ) {
   const callExpression = constr.getFirstDescendant((node) => {
     if (!Node.isCallExpression(node)) {
@@ -211,24 +212,25 @@ export function updateMakeObservable(
   });
 }
 
-export function updateInjectFeatures(
+export function updateInjectFeature(
   node: ClassDeclaration,
-  cb: (config: ObjectLiteralExpression) => void
+  propertyName: string,
+  classId: string
 ) {
-  updateConstructor(node, (constr) => {
-    let config = getConstructorConfig(constr, "injectFeatures");
+  const existingProperty = node
+    .getProperties()
+    .find((property) => property.getName() === propertyName);
 
-    if (!config) {
-      constr.addStatements(["this.injectFeatures({})"]);
-      config = getConstructorConfig(constr, "injectFeatures")!;
-    }
-
-    cb(config);
-
-    if (!config.getProperties().length) {
-      (config.getParent().getParent() as ExpressionStatement).remove();
-    }
-  });
+  if (existingProperty) {
+    existingProperty.setInitializer(
+      `this.injectFeature<typeof ${classId}>("${classId}")`
+    );
+  } else {
+    node.insertProperty(1, {
+      name: propertyName,
+      initializer: `this.injectFeature<typeof ${classId}>("${classId}")`,
+    });
+  }
 }
 
 export function getObservables(node: ClassDeclaration) {
@@ -264,8 +266,6 @@ export function getObservables(node: ClassDeclaration) {
 
   return observables;
 }
-
-export function getInjections(node: ts.ClassDeclaration) {}
 
 export function addImportDeclaration(
   sourceFile: SourceFile,

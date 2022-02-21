@@ -272,7 +272,6 @@ export class Devtool implements IDevtool {
   }
   sendInstance(classId: string, instanceId: number, instance: any) {
     this._instanceIdToInstance[instanceId] = instance;
-    console.log("WTF?", classId, instanceId, instance);
     this.send({
       type: "instance",
       data: {
