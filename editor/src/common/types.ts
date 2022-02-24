@@ -65,9 +65,10 @@ export type ClassInstance = {
 };
 
 export enum Mixin {
+  ObservableState = "ObservableState",
   Factory = "Factory",
   StateMachine = "StateMachine",
-  EventHub = "EventHub",
+  EventEmitter = "EventEmitter",
 }
 
 export type ClassNodeProperties = {

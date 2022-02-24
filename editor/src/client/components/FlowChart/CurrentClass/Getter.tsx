@@ -15,25 +15,13 @@ const PropertyWrapper = styled.div`
 const PropertyIcon = styled(HiCog)`
   margin-right: ${space[2]};
   color: ${colors.gray[600]};
-  cursor: pointer;
-  :hover {
-    color: ${colors.gray[200]};
-  }
 `;
 
 export const Getter = observer(
-  ({
-    property,
-    id,
-    toggleComputed,
-  }: {
-    property: Property;
-    id: string;
-    toggleComputed: (id: string, property: Property) => void;
-  }) => {
+  ({ property, id }: { property: Property; id: string }) => {
     return (
       <PropertyWrapper>
-        <PropertyIcon onClick={() => toggleComputed(id, property)} />
+        <PropertyIcon />
         {property.name}
       </PropertyWrapper>
     );

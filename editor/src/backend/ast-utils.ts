@@ -81,13 +81,16 @@ export function getInjectors(node: ClassDeclaration): Injector[] {
 export function getProperties(node: ClassDeclaration) {
   function shouldIgnore(member: ClassMemberTypes) {
     return Boolean(
-      member.getModifiers().find(
-        (modifier) =>
-          // modifier.getKind() === ts.SyntaxKind.PrivateKeyword ||
-          modifier.getKind() === ts.SyntaxKind.StaticKeyword ||
-          modifier.getKind() === ts.SyntaxKind.ReadonlyKeyword ||
-          modifier.getKind() === ts.SyntaxKind.ProtectedKeyword
-      )
+      !(Node.isPropertyDeclaration(member) && member.getName() === "state") &&
+        member
+          .getModifiers()
+          .find(
+            (modifier) =>
+              modifier.getKind() === ts.SyntaxKind.PrivateKeyword ||
+              modifier.getKind() === ts.SyntaxKind.StaticKeyword ||
+              modifier.getKind() === ts.SyntaxKind.ReadonlyKeyword ||
+              modifier.getKind() === ts.SyntaxKind.ProtectedKeyword
+          )
     );
   }
   return node.getMembers().reduce<Property[]>((aggr, member) => {

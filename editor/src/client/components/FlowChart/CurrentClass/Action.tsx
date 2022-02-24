@@ -6,13 +6,7 @@ import styled from "styled-components";
 
 import { colors, space } from "../../../../common/design-tokens";
 import { ClassInstance, Method } from "../../../../common/types";
-import { useBackend } from "../../../backend";
 import ValueInspector from "../../ValueInspector";
-
-const CurrentValueContainer = styled.div`
-  display: flex;
-  margin: 5px;
-`;
 
 const ActionWrapper = styled.div`
   display: flex;
@@ -24,7 +18,6 @@ const ActionIcon = styled(AiOutlineCode)`
   margin-left: ${space[1]};
   margin-right: ${space[2]};
   color: ${colors.orange[500]};
-  cursor: pointer;
 `;
 
 const RunWrapper = styled.div`
@@ -60,14 +53,12 @@ export const Action = observer(
     instanceId,
     instance,
     runAction,
-    toggleAction,
   }: {
     id: string;
     action: Method;
     instanceId: number | null;
     instance: ClassInstance | null;
     runAction: (instanceId: number, name: string) => void;
-    toggleAction: (id: string, method: Method) => void;
   }) => {
     const [isExpanded, setExpanded] = React.useState(false);
 
@@ -75,7 +66,7 @@ export const Action = observer(
       <Wrapper>
         <ActionWrapper onClick={() => setExpanded(!isExpanded)}>
           {isExpanded ? <RiArrowDownSLine /> : <RiArrowRightSLine />}
-          <ActionIcon onClick={() => toggleAction(id, action)} />
+          <ActionIcon />
           {action.name} (
           {instance && instance.actionExecutions[action.name]
             ? instance.actionExecutions[action.name].length

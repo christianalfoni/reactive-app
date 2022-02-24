@@ -20,7 +20,7 @@ const ObservableWrapper = styled.div`
 
 const ObservableIcon = styled(FiBox)`
   margin-right: ${space[2]};
-  cursor: pointer;
+
   color: ${colors.orange[500]};
 `;
 
@@ -29,16 +29,14 @@ export const Observable = observer(
     id,
     property,
     instance,
-    toggleObservable,
   }: {
     id: string;
     property: Property;
     instance: ClassInstance | null;
-    toggleObservable: (id: string, property: Property) => void;
   }) => {
     return (
       <ObservableWrapper>
-        <ObservableIcon onClick={() => toggleObservable(id, property)} />
+        <ObservableIcon />
         {property.name}
         <div>
           <EditCurrentValueContainer>
@@ -47,6 +45,7 @@ export const Observable = observer(
                 small
                 value={instance.values[property.name]}
                 delimiter="."
+                expanded={true}
               />
             ) : null}
           </EditCurrentValueContainer>

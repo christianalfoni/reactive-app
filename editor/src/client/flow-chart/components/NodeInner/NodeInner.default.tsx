@@ -220,7 +220,8 @@ export const NodeInnerDefault = observer(
                   <FiBox
                     style={{
                       color:
-                        property.type === "observable"
+                        property.type === "observable" ||
+                        property.name === "state"
                           ? colors.orange[400]
                           : undefined,
                     }}

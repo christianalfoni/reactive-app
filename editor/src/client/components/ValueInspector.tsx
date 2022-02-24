@@ -8,15 +8,19 @@ type Props = {
   value: any;
   small?: boolean;
   delimiter: string;
+  expanded?: boolean;
 };
 
 const ValueInspector: FunctionComponent<Props> = ({
   value,
   small,
   delimiter,
+  expanded,
 }) => {
   const backend = useBackend();
-  const [expandedPaths, setExpandedPaths] = useState<string[]>([]);
+  const [expandedPaths, setExpandedPaths] = useState<string[]>(
+    expanded ? [""] : []
+  );
 
   function onToggleExpand(path: string[]) {
     const pathString = path.join(delimiter);

@@ -107,21 +107,6 @@ export class FilesManager {
     }
   }
 
-  private async ensureContainerEntry() {
-    const entryFile = path.resolve(APP_DIR, "index.ts");
-    try {
-      await fs.promises.stat(entryFile);
-    } catch {
-      // We do not have the file, lets write it
-      await this.writePrettyFile(
-        entryFile,
-        `import { Container } from '${LIBRARY_IMPORT}'
-export const container = new Container({}, { devtool: process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !window.opener ? "localhost:5051" : undefined })
-`
-      );
-    }
-  }
-
   private extractClass(classId: string) {
     const node = this.getAppSourceFile(classId);
     const classNode = ast.getClassNode(node, classId);
@@ -219,7 +204,7 @@ export const container = new Container({}, { devtool: process.env.NODE_ENV === '
   async writeClass(classId: string) {
     const file = path.resolve(APP_DIR, classId, "index.ts")!;
 
-    await this.writeClassToEntryFile(classId);
+    await this.writeContainerFile();
     await this.writePrettyFile(
       file,
       `import { Feature } from 'reactive-app'
@@ -232,38 +217,27 @@ export class ${classId} {
     );
   }
 
-  private async writeClassToEntryFile(classId: string) {
-    const sourceFile = this.getAppSourceFile("index");
+  private async writeContainerFile() {
+    const classIds = Object.keys(this.classes);
+    const entryFile = path.resolve(APP_DIR, "index.ts");
+    try {
+      await this.writePrettyFile(
+        entryFile,
+        `import { Container } from 'reactive-app'
+${classIds
+  .map((classId) => `import { ${classId} } from './${classId}'`)
+  .join("\n")}
 
-    sourceFile.addImportDeclaration({
-      moduleSpecifier: `./${classId}`,
-      namedImports: [classId],
-    });
+export type AppContainer = Container<{
+  ${classIds.map((classId) => `${classId}: typeof ${classId}`).join(",")}
+}>
 
-    sourceFile
-      .getVariableDeclaration("container")
-      ?.getInitializer()
-      ?.transform((traversal) => {
-        const node = traversal.visitChildren();
-
-        if (
-          ts.isObjectLiteralExpression(node) &&
-          ts.isNewExpression(node.parent) &&
-          node.parent.arguments![0] === node
-        ) {
-          return ts.factory.createObjectLiteralExpression(
-            [
-              ...node.properties,
-              ts.factory.createShorthandPropertyAssignment(classId, undefined),
-            ],
-            undefined
-          );
-        }
-
-        return node;
-      });
-
-    sourceFile.saveSync();
+export const container: AppContainer = new Container({
+  ${classIds.map((classId) => classId).join(",")}
+}, { devtool: process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !window.opener ? "localhost:5051" : undefined })
+      `
+      );
+    } catch {}
   }
 
   /*
@@ -362,39 +336,95 @@ export class ${classId} {
   async toggleMixin(classId: string, mixin: Mixin) {
     const sourceFile = this.getAppSourceFile(classId);
 
+    function toggleObservable() {
+      ast.toggleImportDeclaration(
+        sourceFile,
+        LIBRARY_IMPORT,
+        Mixin.ObservableState
+      );
+      const hasAddedObservable = ast.toggleMixinInterface(
+        sourceFile,
+        classId,
+        Mixin.ObservableState
+      );
+      ast.toggleMixin(sourceFile, classId, Mixin.ObservableState);
+
+      const stateType = sourceFile.getTypeAlias("State");
+      const classInterface = sourceFile.getInterface(classId);
+      const classNode = ast.getClassNode(sourceFile, classId);
+      if (hasAddedObservable && !stateType) {
+        sourceFile.insertTypeAlias(classInterface!.getChildIndex(), {
+          name: "State",
+          isExported: true,
+          type: "{}",
+        });
+        classNode
+          .insertProperty(1, {
+            name: "state",
+            type: "State",
+            initializer: "{}",
+          })
+          .toggleModifier("private");
+      } else if (stateType) {
+        stateType.remove();
+        classNode.getProperty("state")?.remove();
+      }
+    }
+
     switch (mixin) {
-      case "Factory":
+      case "EventEmitter":
+      case "Factory": {
         ast.toggleImportDeclaration(sourceFile, LIBRARY_IMPORT, mixin);
         ast.toggleMixinInterface(sourceFile, classId, mixin);
         ast.toggleMixin(sourceFile, classId, mixin);
         break;
-      case "StateMachine":
+      }
+      case "ObservableState": {
+        toggleObservable();
+        break;
+      }
+      case "StateMachine": {
+        const classInterface = sourceFile.getInterface(classId);
+        const classNode = ast.getClassNode(sourceFile, classId);
+        const hasObservable = ast
+          .getClassMixins(classNode)
+          .includes(Mixin.ObservableState);
+
+        if (!hasObservable) {
+          toggleObservable();
+        }
+
         ast.toggleImportDeclaration(sourceFile, LIBRARY_IMPORT, mixin);
+        ast.toggleMixin(sourceFile, classId, mixin);
         const hasAddedStateMachine = ast.toggleMixinInterface(
           sourceFile,
           classId,
           "StateMachine<State>"
         );
         const stateType = sourceFile.getTypeAlias("State");
-        const classInterface = sourceFile.getInterface(classId);
+        const stateProperty = classNode.getProperty("state");
 
-        if (hasAddedStateMachine && !stateType) {
+        if (hasAddedStateMachine) {
           const interfaceNodeIndex = classInterface!.getChildIndex();
-          sourceFile.insertTypeAlias(interfaceNodeIndex, {
-            name: "State",
-            isExported: true,
-            type: '{ state: "FOO" } | { state: "BAR" }',
-          });
-          ast.updateConstructor(
-            ast.getClassNode(sourceFile, classId),
-            (constr) => {
-              constr.insertStatements(0, [
-                'this.transitionTo({ state: "FOO" })',
-              ]);
-            }
-          );
-        } else if (stateType) {
-          stateType.remove();
+
+          if (!stateType) {
+            sourceFile.insertTypeAlias(interfaceNodeIndex, {
+              name: "State",
+              isExported: true,
+              type: '{ state: "FOO" } | { state: "BAR" }',
+            });
+          }
+
+          if (!stateProperty) {
+            classNode
+              .insertProperty(1, {
+                name: "state",
+                type: "State",
+                initializer: '{ state: "FOO" }',
+              })
+              .toggleModifier("private");
+          }
+        } else {
           ast.updateConstructor(
             ast.getClassNode(sourceFile, classId),
             (constr) => {
@@ -404,8 +434,9 @@ export class ${classId} {
             }
           );
         }
-        ast.toggleMixin(sourceFile, classId, mixin);
+
         break;
+      }
     }
 
     sourceFile.saveSync();
@@ -436,8 +467,9 @@ export class ${classId} {
     fs.mkdirSync(path.resolve(APP_DIR, toClassId));
     fs.writeFileSync(toClassPath, sourceFile.print());
 
-    await this.writeClassToEntryFile(toClassId);
     await this.deleteClass(fromClassId);
+
+    await this.writeContainerFile();
   }
 
   async initialize(listeners: {
@@ -447,8 +479,10 @@ export class ${classId} {
   }) {
     await this.ensureConfigurationDir();
     await this.ensureAppDir();
-    await this.ensureContainerEntry();
+
     this.classes = await this.getClasses();
+
+    await this.writeContainerFile();
 
     this.filesWatcher = chokidar.watch(`${path.resolve(APP_DIR)}/*/index.ts`, {
       ignoreInitial: true,

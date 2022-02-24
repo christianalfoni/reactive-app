@@ -4,7 +4,7 @@ import { Devtool } from "./devtool";
 import * as mixins from "./mixins";
 import { IClass, IContainerConfig, IOptions } from "./types";
 import { TInjection } from "./mixins/Feature";
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, makeObservable, observable } from "mobx";
 
 export * from "mobx";
 
@@ -167,33 +167,49 @@ export class Container<T extends IContainerConfig> {
           }, {})
         );
 
-        try {
-          makeAutoObservable(
-            instance,
-            injectFeatureProps.reduce<Record<string, false>>(
-              (aggr, key) => {
-                aggr[key] = false;
+        const clas = self._classes.get(id);
+        const otherProps = Object.getOwnPropertyNames(instance).filter(
+          (name) => name !== "state" && typeof instance[name] !== "function"
+        );
 
-                return aggr;
-              },
-              {
-                injectFeature: false,
-                runInAction: false,
-                reaction: false,
-                when: false,
-                addTransition: false,
-                transitionTo: false,
-                match: false,
-                isDisposed: false,
-                dispose: false,
-                onDispose: false,
-                on: false,
-                emit: false,
-              }
-            )
-          );
-        } catch {
-          // Already made observable by factory for example
+        if (clas.mixins && clas.mixins.includes("ObservableState")) {
+          try {
+            makeAutoObservable(
+              instance,
+              injectFeatureProps
+                .concat(otherProps)
+                .reduce<Record<string, false>>(
+                  (aggr, key) => {
+                    aggr[key] = false;
+
+                    return aggr;
+                  },
+                  {
+                    injectFeature: false,
+                    runInAction: false,
+                    reaction: false,
+                    when: false,
+                    addTransition: false,
+                    transitionTo: false,
+                    match: false,
+                    isDisposed: false,
+                    dispose: false,
+                    onDispose: false,
+                    on: false,
+                    emit: false,
+                  }
+                )
+            );
+          } catch {
+            // Already made observable by factory for example
+          }
+        } else if (
+          clas.mixins &&
+          clas.mixins.includes("ObservableStateMachine")
+        ) {
+          makeObservable(instance, {
+            state: observable,
+          });
         }
 
         self._devtool?.unsetInstanceSpy();

@@ -1,5 +1,3 @@
-import { action } from "mobx";
-
 export type DisposableValue = (() => void) | { cancel: () => void };
 
 export const DISPOSABLES = Symbol("DISPOSABLES");
@@ -14,7 +12,7 @@ export class Factory {
     return Boolean(this[IS_DISPOSED]);
   }
 
-  onDispose(disposable: DisposableValue) {
+  protected onDispose(disposable: DisposableValue) {
     if (!this[DISPOSABLES]) {
       this[DISPOSABLES] = [];
     }

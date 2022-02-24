@@ -21,7 +21,6 @@ const ComputedWrapper = styled.div`
 const ComputedIcon = styled(HiCog)`
   margin-right: ${space[2]};
   color: ${colors.orange[500]};
-  cursor: pointer;
 `;
 
 export const Computed = observer(
@@ -29,16 +28,14 @@ export const Computed = observer(
     id,
     property,
     instance,
-    toggleComputed,
   }: {
     id: string;
     property: Property;
     instance: ClassInstance | null;
-    toggleComputed: (id: string, property: Property) => void;
   }) => {
     return (
       <ComputedWrapper>
-        <ComputedIcon onClick={() => toggleComputed(id, property)} />
+        <ComputedIcon />
         {property.name}
         <div>
           <CurrentValueContainer>

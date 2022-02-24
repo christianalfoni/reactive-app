@@ -57,7 +57,8 @@ const InstanceSelectorLeft = styled(MdKeyboardArrowLeft)<{ disabled: boolean }>`
 `;
 
 const Mixins = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: 50% 50%;
   margin-bottom: ${space[4]};
   > * {
     margin-right: ${space[2]};
@@ -222,25 +223,21 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
       <div>
         {node.properties.properties.map((property) => {
           if (property.type === "getter") {
+            return <Getter key={property.name} id={id} property={property} />;
+          }
+
+          if (property.name === "state") {
             return (
-              <Getter
+              <Observable
                 key={property.name}
                 id={id}
                 property={property}
-                toggleComputed={backend.actions.onToggleComputed}
+                instance={instance}
               />
             );
           }
 
-          return (
-            <Observable
-              key={property.name}
-              id={id}
-              property={property}
-              instance={instance}
-              toggleObservable={backend.actions.onToggleObservable}
-            />
-          );
+          return <Property key={property.name} id={id} property={property} />;
 
           if (property.type === "getter") {
             return (
@@ -249,19 +246,9 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
                 id={id}
                 property={property}
                 instance={instance}
-                toggleComputed={backend.actions.onToggleComputed}
               />
             );
           }
-
-          return (
-            <Property
-              key={property.name}
-              id={id}
-              property={property}
-              toggleObservable={backend.actions.onToggleObservable}
-            />
-          );
         })}
       </div>
       <div>
@@ -283,7 +270,6 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
               id={id}
               action={method}
               runAction={backend.actions.onRunAction}
-              toggleAction={backend.actions.onToggleAction}
               instanceId={node.properties.currentInstanceId}
               instance={instance}
             />
