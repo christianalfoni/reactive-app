@@ -221,35 +221,27 @@ export const CurrentClass = observer(({ id }: { id: string }) => {
         </div>
       )}
       <div>
-        {node.properties.properties.map((property) => {
-          if (property.type === "getter") {
-            return <Getter key={property.name} id={id} property={property} />;
-          }
+        {node.properties.properties
+          .slice()
+          .sort(({ name }) => (name === "state" ? -1 : 1))
+          .map((property) => {
+            if (property.type === "getter") {
+              return <Getter key={property.name} id={id} property={property} />;
+            }
 
-          if (property.name === "state") {
-            return (
-              <Observable
-                key={property.name}
-                id={id}
-                property={property}
-                instance={instance}
-              />
-            );
-          }
+            if (property.name === "state") {
+              return (
+                <Observable
+                  key={property.name}
+                  id={id}
+                  property={property}
+                  instance={instance}
+                />
+              );
+            }
 
-          return <Property key={property.name} id={id} property={property} />;
-
-          if (property.type === "getter") {
-            return (
-              <Computed
-                key={property.name}
-                id={id}
-                property={property}
-                instance={instance}
-              />
-            );
-          }
-        })}
+            return <Property key={property.name} id={id} property={property} />;
+          })}
       </div>
       <div>
         {node.properties.methods.map((method) => {

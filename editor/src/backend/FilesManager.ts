@@ -3,7 +3,7 @@ import * as path from "path";
 
 import * as chokidar from "chokidar";
 import * as prettier from "prettier";
-import { Node, Project, StructureKind } from "ts-morph";
+import { Project, StructureKind } from "ts-morph";
 import * as ts from "typescript";
 
 import {

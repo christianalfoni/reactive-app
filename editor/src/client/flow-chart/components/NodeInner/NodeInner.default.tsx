@@ -204,33 +204,37 @@ export const NodeInnerDefault = observer(
               </Property>
             );
           })}
-          {node.properties.properties.map((property) => {
-            return (
-              <Property key={property.name}>
-                {property.type === "computed" || property.type === "getter" ? (
-                  <HiCog
-                    style={{
-                      color:
-                        property.type === "computed"
-                          ? colors.orange[400]
-                          : undefined,
-                    }}
-                  />
-                ) : (
-                  <FiBox
-                    style={{
-                      color:
-                        property.type === "observable" ||
-                        property.name === "state"
-                          ? colors.orange[400]
-                          : undefined,
-                    }}
-                  />
-                )}
-                <span>{property.name}</span>
-              </Property>
-            );
-          })}
+          {node.properties.properties
+            .slice()
+            .sort(({ name }) => (name === "state" ? -1 : 1))
+            .map((property) => {
+              return (
+                <Property key={property.name}>
+                  {property.type === "computed" ||
+                  property.type === "getter" ? (
+                    <HiCog
+                      style={{
+                        color:
+                          property.type === "computed"
+                            ? colors.orange[400]
+                            : undefined,
+                      }}
+                    />
+                  ) : (
+                    <FiBox
+                      style={{
+                        color:
+                          property.type === "observable" ||
+                          property.name === "state"
+                            ? colors.orange[400]
+                            : undefined,
+                      }}
+                    />
+                  )}
+                  <span>{property.name}</span>
+                </Property>
+              );
+            })}
           {node.properties.methods.map((method) => {
             return (
               <Property key={method.name}>
